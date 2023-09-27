@@ -1,6 +1,5 @@
-#include "builtins/shared/text-encoder.h"
-#include "core/encode.h"
-#include "js-compute-builtins.h"
+#include "saru/builtins/text-encoder.h"
+#include "saru/encode.h"
 #include <iostream>
 #include <tuple>
 
@@ -12,7 +11,7 @@
 #include "js/experimental/TypedData.h"
 #pragma clang diagnostic pop
 
-namespace builtins {
+namespace saru {
 
 bool TextEncoder::encode(JSContext *cx, unsigned argc, JS::Value *vp) {
   METHOD_HEADER(0);
@@ -28,7 +27,7 @@ bool TextEncoder::encode(JSContext *cx, unsigned argc, JS::Value *vp) {
     return true;
   }
 
-  auto chars = core::encode(cx, args[0]);
+  auto chars = saru::encode(cx, args[0]);
   JS::RootedObject buffer(cx, JS::NewArrayBufferWithContents(cx, chars.len, chars.begin()));
   if (!buffer) {
     return false;
@@ -56,18 +55,18 @@ bool TextEncoder::encodeInto(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto destination_value = args.get(1);
 
   if (!destination_value.isObject()) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                               JSMSG_TEXT_ENCODER_ENCODEINTO_INVALID_ARRAY);
     return false;
   }
   JS::RootedObject destination(cx, &destination_value.toObject());
   if (!JS_IsArrayBufferViewObject(destination)) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                               JSMSG_TEXT_ENCODER_ENCODEINTO_INVALID_ARRAY);
     return false;
   }
   if (JS::IsLargeArrayBufferView(destination)) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                               JSMSG_TEXT_ENCODER_ENCODEINTO_INVALID_ARRAY);
     return false;
   }
@@ -76,7 +75,7 @@ bool TextEncoder::encodeInto(JSContext *cx, unsigned argc, JS::Value *vp) {
   bool is_shared;
   size_t len = 0;
   if (!JS_GetObjectAsUint8Array(destination, &len, &is_shared, &data)) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                               JSMSG_TEXT_ENCODER_ENCODEINTO_INVALID_ARRAY);
     return false;
   }
@@ -166,4 +165,4 @@ bool TextEncoder::init_class(JSContext *cx, JS::HandleObject global) {
   return init_class_impl(cx, global);
 }
 
-} // namespace builtins
+} // namespace saru

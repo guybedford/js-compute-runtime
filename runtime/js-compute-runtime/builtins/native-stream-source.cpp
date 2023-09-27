@@ -7,11 +7,11 @@
 
 #include "js/Stream.h"
 
-#include "builtin.h"
 #include "builtins/native-stream-sink.h"
 #include "builtins/native-stream-source.h"
 #include "builtins/request-response.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
 
 // A JS class to use as the underlying source for native readable streams, used
 // for Request/Response bodies and TransformStream.

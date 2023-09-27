@@ -1,4 +1,4 @@
-#include "core/event_loop.h"
+#include "saru/event_loop.h"
 #include "builtins/native-stream-source.h"
 #include "builtins/request-response.h"
 #include "host_interface/host_api.h"
@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-namespace core {
+namespace saru {
 
 namespace {
 
@@ -185,7 +185,7 @@ bool error_stream_controller_with_pending_exception(JSContext *cx, JS::HandleObj
 
 constexpr size_t HANDLE_READ_CHUNK_SIZE = 8192;
 
-bool process_body_read(JSContext *cx, JS::HandleObject streamSource, host_api::HttpBody body) {
+bool process_body_read(JSContext *cx, JS::HandleObject streamSource, saru::HttpBody body) {
   JS::RootedObject owner(cx, builtins::NativeStreamSource::owner(streamSource));
   JS::RootedObject controller(cx, builtins::NativeStreamSource::controller(streamSource));
 
@@ -296,7 +296,7 @@ bool EventLoop::process_pending_async_tasks(JSContext *cx) {
     ok = process_pending_request(cx, ready_obj, host_api::HttpPendingReq{ready_handle});
   } else {
     MOZ_ASSERT(builtins::NativeStreamSource::is_instance(ready_obj));
-    ok = process_body_read(cx, ready_obj, host_api::HttpBody{ready_handle});
+    ok = process_body_read(cx, ready_obj, saru::HttpBody{ready_handle});
   }
 
   pending_async_tasks->erase(const_cast<JSObject **>(ready_obj.address()));
@@ -328,4 +328,4 @@ void EventLoop::init(JSContext *cx) {
   timers.init(cx, js::MakeUnique<ScheduledTimers>());
 }
 
-} // namespace core
+} // namespace saru

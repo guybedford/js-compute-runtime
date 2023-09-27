@@ -1,8 +1,8 @@
 #include "crypto-key.h"
-#include "core/encode.h"
 #include "crypto-algorithm.h"
 #include "js-compute-builtins.h"
 #include "openssl/rsa.h"
+#include "saru/encode.h"
 #include <iostream>
 #include <openssl/ec.h>
 #include <utility>
@@ -99,7 +99,7 @@ JS::Result<CryptoKeyUsages> CryptoKeyUsages::from(JSContext *cx, JS::HandleValue
       return JS::Result<CryptoKeyUsages>(JS::Error());
     }
 
-    auto utf8chars = core::encode(cx, val);
+    auto utf8chars = saru::encode(cx, val);
     if (!utf8chars) {
       return JS::Result<CryptoKeyUsages>(JS::Error());
     }
@@ -730,7 +730,7 @@ JS::Result<bool> CryptoKey::is_algorithm(JSContext *cx, JS::HandleObject self,
     return JS::Result<bool>(JS::Error());
   }
   // TODO: should chars be used?
-  auto chars = core::encode(cx, str);
+  auto chars = saru::encode(cx, str);
   if (!chars) {
     return JS::Result<bool>(JS::Error());
   }

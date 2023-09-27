@@ -2,11 +2,17 @@
 #include <type_traits>
 
 #include "builtins/cache-override.h"
-#include "core/allocator.h"
 #include "host_interface/component/fastly_world.h"
 #include "host_interface/fastly.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/allocator.h"
+#include "saru/runtime_definitions.h"
+
+/// Generate an error in the JSContext.
+void saru_handle_error(JSContext *cx, saru::Error err, int line, const char *func) {
+  host_api::handle_fastly_error(cx, err, line, func);
+}
 
 namespace host_api {
 
@@ -26,8 +32,8 @@ fastly_world_string_t string_view_to_world_string(std::string_view str) {
   };
 }
 
-HostString make_host_string(fastly_world_string_t str) {
-  return HostString{JS::UniqueChars{str.ptr}, str.len};
+saru::String make_host_string(fastly_world_string_t str) {
+  return saru::String{JS::UniqueChars{str.ptr}, str.len};
 }
 
 HostBytes make_host_bytes(fastly_world_list_u8_t str) {
@@ -65,143 +71,18 @@ static_assert(std::is_same_v<CacheHandle::Handle, fastly_compute_at_edge_cache_h
 static_assert(
     std::is_same_v<typeof(CacheState::state), fastly_compute_at_edge_cache_lookup_state_t>);
 
-Result<bool> AsyncHandle::is_ready() const {
-  Result<bool> res;
-
-  fastly_compute_at_edge_types_error_t err;
-  bool ret;
-  if (!fastly_compute_at_edge_async_io_is_ready(this->handle, &ret, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace(ret);
-  }
-
-  return res;
-}
-
-Result<std::optional<uint32_t>> AsyncHandle::select(const std::vector<AsyncHandle> &handles,
-                                                    uint32_t timeout_ms) {
-  Result<std::optional<uint32_t>> res;
-
-  static_assert(sizeof(AsyncHandle) == sizeof(fastly_compute_at_edge_async_io_handle_t));
-  fastly_world_list_fastly_compute_at_edge_async_io_handle_t hs{
-      .ptr = reinterpret_cast<fastly_compute_at_edge_async_io_handle_t *>(
-          const_cast<AsyncHandle *>(handles.data())),
-      .len = handles.size()};
-  fastly_world_option_u32_t ret;
-  fastly_compute_at_edge_types_error_t err;
-  if (!fastly_compute_at_edge_async_io_select(&hs, timeout_ms, &ret, &err)) {
-    res.emplace_err(err);
-  } else if (ret.is_some) {
-    res.emplace(ret.val);
-  } else {
-    res.emplace(std::nullopt);
-  }
-
-  return res;
-}
-
-Result<HttpBody> HttpBody::make() {
-  Result<HttpBody> res;
-
-  fastly_compute_at_edge_http_types_body_handle_t handle;
-  fastly_compute_at_edge_types_error_t err;
-  if (!fastly_compute_at_edge_http_body_new(&handle, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace(handle);
-  }
-
-  return res;
-}
-
-Result<HostString> HttpBody::read(uint32_t chunk_size) const {
-  Result<HostString> res;
-
-  fastly_world_list_u8_t ret;
-  fastly_compute_at_edge_types_error_t err;
-  if (!fastly_compute_at_edge_http_body_read(this->handle, chunk_size, &ret, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace(JS::UniqueChars(reinterpret_cast<char *>(ret.ptr)), ret.len);
-  }
-
-  return res;
-}
-
-Result<uint32_t> HttpBody::write(const uint8_t *ptr, size_t len) const {
-  Result<uint32_t> res;
-
-  // The write call doesn't mutate the buffer; the cast is just for the generated fastly api.
-  fastly_world_list_u8_t chunk{const_cast<uint8_t *>(ptr), len};
-
-  fastly_compute_at_edge_types_error_t err;
-  uint32_t written;
-  if (!fastly_compute_at_edge_http_body_write(
-          this->handle, &chunk, FASTLY_COMPUTE_AT_EDGE_HTTP_BODY_WRITE_END_BACK, &written, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace(written);
-  }
-
-  return res;
-}
-
-Result<Void> HttpBody::write_all(const uint8_t *ptr, size_t len) const {
-  while (len > 0) {
-    auto write_res = this->write(ptr, len);
-    if (auto *err = write_res.to_err()) {
-      return Result<Void>::err(*err);
-    }
-
-    auto written = write_res.unwrap();
-    ptr += written;
-    len -= std::min(len, static_cast<size_t>(written));
-  }
-
-  return Result<Void>::ok();
-}
-
-Result<Void> HttpBody::append(HttpBody other) const {
-  Result<Void> res;
-
-  fastly_compute_at_edge_types_error_t err;
-  if (!fastly_compute_at_edge_http_body_append(this->handle, other.handle, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace();
-  }
-
-  return res;
-}
-
-Result<Void> HttpBody::close() {
-  Result<Void> res;
-
-  fastly_compute_at_edge_types_error_t err;
-  if (!fastly_compute_at_edge_http_body_close(this->handle, &err)) {
-    res.emplace_err(err);
-  } else {
-    res.emplace();
-  }
-
-  return res;
-}
-
-AsyncHandle HttpBody::async_handle() const { return AsyncHandle{this->handle}; }
-
 namespace {
 
 template <auto header_names_get>
-Result<std::vector<HostString>> generic_get_header_names(auto handle) {
-  Result<std::vector<HostString>> res;
+Result<std::vector<saru::String>> generic_get_header_names(auto handle) {
+  Result<std::vector<saru::String>> res;
 
   fastly_world_list_string_t ret;
   fastly_compute_at_edge_types_error_t err;
   if (!header_names_get(handle, &ret, &err)) {
     res.emplace_err(err);
   } else {
-    std::vector<HostString> names;
+    std::vector<saru::String> names;
 
     for (int i = 0; i < ret.len; i++) {
       names.emplace_back(make_host_string(ret.ptr[i]));
@@ -217,9 +98,9 @@ Result<std::vector<HostString>> generic_get_header_names(auto handle) {
 }
 
 template <auto header_values_get>
-Result<std::optional<std::vector<HostString>>> generic_get_header_values(auto handle,
-                                                                         std::string_view name) {
-  Result<std::optional<std::vector<HostString>>> res;
+Result<std::optional<std::vector<saru::String>>> generic_get_header_values(auto handle,
+                                                                           std::string_view name) {
+  Result<std::optional<std::vector<saru::String>>> res;
 
   fastly_world_string_t hdr = string_view_to_world_string(name);
   fastly_world_option_list_string_t ret;
@@ -229,7 +110,7 @@ Result<std::optional<std::vector<HostString>>> generic_get_header_values(auto ha
   } else {
 
     if (ret.is_some) {
-      std::vector<HostString> names;
+      std::vector<saru::String> names;
 
       for (int i = 0; i < ret.val.len; i++) {
         names.emplace_back(make_host_string(ret.val.ptr[i]));
@@ -536,8 +417,8 @@ Result<Void> HttpReq::set_method(std::string_view method) {
   return res;
 }
 
-Result<HostString> HttpReq::get_method() const {
-  Result<HostString> res;
+Result<saru::String> HttpReq::get_method() const {
+  Result<saru::String> res;
 
   fastly_compute_at_edge_types_error_t err;
   fastly_world_string_t ret;
@@ -564,8 +445,8 @@ Result<Void> HttpReq::set_uri(std::string_view str) {
   return res;
 }
 
-Result<HostString> HttpReq::get_uri() const {
-  Result<HostString> res;
+Result<saru::String> HttpReq::get_uri() const {
+  Result<saru::String> res;
 
   fastly_compute_at_edge_types_error_t err;
   fastly_world_string_t uri;
@@ -624,8 +505,8 @@ Result<HostBytes> HttpReq::downstream_client_ip_addr() {
 }
 
 // http-req-downstream-tls-cipher-openssl-name: func() -> result<string, error>
-Result<HostString> HttpReq::http_req_downstream_tls_cipher_openssl_name() {
-  Result<HostString> res;
+Result<saru::String> HttpReq::http_req_downstream_tls_cipher_openssl_name() {
+  Result<saru::String> res;
 
   fastly_compute_at_edge_types_error_t err;
   fastly_world_string_t ret;
@@ -639,8 +520,8 @@ Result<HostString> HttpReq::http_req_downstream_tls_cipher_openssl_name() {
 }
 
 // http-req-downstream-tls-protocol: func() -> result<string, error>
-Result<HostString> HttpReq::http_req_downstream_tls_protocol() {
-  Result<HostString> res;
+Result<saru::String> HttpReq::http_req_downstream_tls_protocol() {
+  Result<saru::String> res;
 
   fastly_compute_at_edge_types_error_t err;
   fastly_world_string_t ret;
@@ -714,11 +595,11 @@ Result<fastly_compute_at_edge_http_types_http_version_t> HttpReq::get_version() 
   return res;
 }
 
-Result<std::vector<HostString>> HttpReq::get_header_names() {
+Result<std::vector<saru::String>> HttpReq::get_header_names() {
   return generic_get_header_names<fastly_compute_at_edge_http_req_header_names_get>(this->handle);
 }
 
-Result<std::optional<std::vector<HostString>>> HttpReq::get_header_values(std::string_view name) {
+Result<std::optional<std::vector<saru::String>>> HttpReq::get_header_values(std::string_view name) {
   return generic_get_header_values<fastly_compute_at_edge_http_req_header_values_get>(this->handle,
                                                                                       name);
 }
@@ -808,11 +689,12 @@ Result<fastly_compute_at_edge_http_types_http_version_t> HttpResp::get_version()
   return res;
 }
 
-Result<std::vector<HostString>> HttpResp::get_header_names() {
+Result<std::vector<saru::String>> HttpResp::get_header_names() {
   return generic_get_header_names<fastly_compute_at_edge_http_resp_header_names_get>(this->handle);
 }
 
-Result<std::optional<std::vector<HostString>>> HttpResp::get_header_values(std::string_view name) {
+Result<std::optional<std::vector<saru::String>>>
+HttpResp::get_header_values(std::string_view name) {
   return generic_get_header_values<fastly_compute_at_edge_http_resp_header_values_get>(this->handle,
                                                                                        name);
 }
@@ -831,8 +713,8 @@ Result<Void> HttpResp::remove_header(std::string_view name) {
   return generic_header_remove<fastly_compute_at_edge_http_resp_header_remove>(this->handle, name);
 }
 
-Result<HostString> GeoIp::lookup(std::span<uint8_t> bytes) {
-  Result<HostString> res;
+Result<saru::String> GeoIp::lookup(std::span<uint8_t> bytes) {
+  Result<saru::String> res;
 
   fastly_world_list_u8_t octets_list{const_cast<uint8_t *>(bytes.data()), bytes.size()};
   fastly_world_string_t ret;
@@ -890,8 +772,8 @@ Result<Dict> Dict::open(std::string_view name) {
   return res;
 }
 
-Result<std::optional<HostString>> Dict::get(std::string_view name) {
-  Result<std::optional<HostString>> res;
+Result<std::optional<saru::String>> Dict::get(std::string_view name) {
+  Result<std::optional<saru::String>> res;
 
   auto name_str = string_view_to_world_string(name);
   fastly_world_option_string_t ret;
@@ -957,8 +839,8 @@ static_assert(std::is_same_v<Secret::Handle, fastly_compute_at_edge_secret_store
 static_assert(
     std::is_same_v<SecretStore::Handle, fastly_compute_at_edge_secret_store_store_handle_t>);
 
-Result<std::optional<HostString>> Secret::plaintext() const {
-  Result<std::optional<HostString>> res;
+Result<std::optional<saru::String>> Secret::plaintext() const {
+  Result<std::optional<saru::String>> res;
 
   fastly_world_option_string_t ret;
   fastly_compute_at_edge_types_error_t err;
@@ -1223,8 +1105,8 @@ Result<CacheState> CacheHandle::get_state() {
   return res;
 }
 
-Result<std::optional<HostString>> Fastly::purge_surrogate_key(std::string_view key) {
-  Result<std::optional<HostString>> res;
+Result<std::optional<saru::String>> Fastly::purge_surrogate_key(std::string_view key) {
+  Result<std::optional<saru::String>> res;
 
   auto host_key = string_view_to_world_string(key);
   fastly_world_option_string_t ret;

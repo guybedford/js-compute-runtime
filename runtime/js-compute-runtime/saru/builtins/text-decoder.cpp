@@ -1,10 +1,9 @@
-#include "builtins/shared/text-decoder.h"
-#include "builtin.h"
-#include "core/encode.h"
-#include "js-compute-builtins.h"
+#include "saru/builtins/text-decoder.h"
 #include "rust-encoding/rust-encoding.h"
+#include "saru/builtin.h"
+#include "saru/encode.h"
 
-namespace builtins {
+namespace saru {
 
 bool TextDecoder::decode(JSContext *cx, unsigned argc, JS::Value *vp) {
   METHOD_HEADER(0);
@@ -25,7 +24,7 @@ bool TextDecoder::decode(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (args.hasDefined(1)) {
     auto options_value = args.get(1);
     if (!options_value.isObject()) {
-      JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+      JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                                 JSMSG_TEXT_DECODER_DECODE_OPTIONS_NOT_DICTIONARY);
       return false;
     }
@@ -57,7 +56,8 @@ bool TextDecoder::decode(JSContext *cx, unsigned argc, JS::Value *vp) {
     result = jsencoding::decoder_decode_to_utf16_without_replacement(decoder, src->data(), &srcLen,
                                                                      dest.get(), &destLen, !stream);
     if (result != 0) {
-      JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_TEXT_DECODER_DECODING_FAILED);
+      JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
+                                JSMSG_TEXT_DECODER_DECODING_FAILED);
       return false;
     }
   } else {
@@ -83,7 +83,8 @@ bool TextDecoder::decode(JSContext *cx, unsigned argc, JS::Value *vp) {
   JS::RootedString str(cx,
                        JS_NewUCStringCopyN(cx, reinterpret_cast<char16_t *>(dest.get()), destLen));
   if (!str) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_TEXT_DECODER_DECODING_FAILED);
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
+                              JSMSG_TEXT_DECODER_DECODING_FAILED);
     return false;
   }
 
@@ -204,7 +205,7 @@ bool TextDecoder::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
     encoding = const_cast<jsencoding::Encoding *>(jsencoding::encoding_for_label_no_replacement(
         reinterpret_cast<uint8_t *>(const_cast<char *>("UTF-8")), 5));
   } else {
-    auto label_chars = core::encode(cx, label_value);
+    auto label_chars = saru::encode(cx, label_value);
     if (!label_chars) {
       return false;
     }
@@ -212,7 +213,8 @@ bool TextDecoder::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
         reinterpret_cast<uint8_t *>(label_chars.begin()), label_chars.len));
   }
   if (!encoding) {
-    JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_TEXT_DECODER_INVALID_ENCODING);
+    JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
+                              JSMSG_TEXT_DECODER_INVALID_ENCODING);
     return false;
   }
   bool fatal = false;
@@ -232,7 +234,7 @@ bool TextDecoder::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
       }
       ignoreBOM = JS::ToBoolean(ignoreBOM_value);
     } else if (!options_val.isNull()) {
-      JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
+      JS_ReportErrorNumberASCII(cx, GetErrorMessageBuiltin, nullptr,
                                 JSMSG_TEXT_DECODER_OPTIONS_NOT_DICTIONARY);
       return false;
     }
@@ -261,4 +263,4 @@ bool TextDecoder::init_class(JSContext *cx, JS::HandleObject global) {
   return init_class_impl(cx, global);
 }
 
-} // namespace builtins
+} // namespace saru

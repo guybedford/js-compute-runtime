@@ -1,7 +1,7 @@
 #include "builtins/worker-location.h"
-#include "builtin.h"
-#include "builtins/shared/url.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
+#include "saru/builtins/url.h"
 
 /**
  * The `WorkerLocation` builtin, added to the global object as the data property
@@ -9,6 +9,9 @@
  * https://html.spec.whatwg.org/multipage/workers.html#worker-locations
  */
 namespace builtins {
+
+using saru::URL;
+
 JS::PersistentRooted<JSObject *> WorkerLocation::url;
 
 #define WorkerLocation_ACCESSOR_GET(field)                                                         \

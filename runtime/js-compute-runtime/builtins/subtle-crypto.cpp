@@ -1,9 +1,11 @@
 #include "subtle-crypto.h"
-#include "builtins/shared/dom-exception.h"
-#include "core/encode.h"
 #include "js-compute-builtins.h"
+#include "saru/builtins/dom-exception.h"
+#include "saru/encode.h"
 
 namespace builtins {
+
+using saru::DOMException;
 
 // digest(algorithm, data)
 // https://w3c.github.io/webcrypto/#SubtleCrypto-method-digest
@@ -86,7 +88,7 @@ bool SubtleCrypto::importKey(JSContext *cx, unsigned argc, JS::Value *vp) {
   {
     auto format_arg = args.get(0);
     // Convert into a String following https://tc39.es/ecma262/#sec-tostring
-    auto format_chars = core::encode(cx, format_arg);
+    auto format_chars = saru::encode(cx, format_arg);
     if (!format_chars || format_chars.len == 0) {
       return ReturnPromiseRejectedWithPendingError(cx, args);
     }

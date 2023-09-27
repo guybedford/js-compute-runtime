@@ -45,4 +45,9 @@ MSG_DEF(JSMSG_ILLEGAL_CTOR,                                    0, JSEXN_TYPEERR,
 MSG_DEF(JSMSG_INVALID_INTERFACE,                               2, JSEXN_TYPEERR, "'{0}' called on an object that does not implement interface {1}")
 MSG_DEF(JSMSG_INCOMPATIBLE_INSTANCE,                           2, JSEXN_TYPEERR, "Method {0} called on receiver that's not an instance of {1}")
 MSG_DEF(JSMSG_INVALID_BUFFER_ARG,                              2, JSEXN_TYPEERR, "{0} must be of type ArrayBuffer or ArrayBufferView but got \"{1}\"")
+MSG_DEF(JSMSG_TEXT_DECODER_INVALID_ENCODING,                   1, JSEXN_RANGEERR, "TextDecoder constructor: The given encoding '{0}' is not supported.")
+MSG_DEF(JSMSG_TEXT_DECODER_DECODING_FAILED,                    0, JSEXN_TYPEERR, "TextDecoder.decode: Decoding failed.")
+MSG_DEF(JSMSG_TEXT_DECODER_OPTIONS_NOT_DICTIONARY,             0, JSEXN_TYPEERR, "TextDecoder constructor: options argument can't be converted to a dictionary.")
+MSG_DEF(JSMSG_TEXT_DECODER_DECODE_OPTIONS_NOT_DICTIONARY,      0, JSEXN_TYPEERR, "TextDecoder.decode: options argument can't be converted to a dictionary.")
+MSG_DEF(JSMSG_TEXT_ENCODER_ENCODEINTO_INVALID_ARRAY,           0, JSEXN_TYPEERR, "TextEncoder.encodeInto: Argument 2 does not implement interface Uint8Array.")
 //clang-format on

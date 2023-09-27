@@ -34,7 +34,6 @@
 
 #include "host_interface/host_api.h"
 
-#include "builtin.h"
 #include "builtins/backend.h"
 #include "builtins/cache-override.h"
 #include "builtins/cache-simple.h"
@@ -54,18 +53,19 @@
 #include "builtins/native-stream-source.h"
 #include "builtins/request-response.h"
 #include "builtins/secret-store.h"
-#include "builtins/shared/console.h"
-#include "builtins/shared/dom-exception.h"
-#include "builtins/shared/performance.h"
-#include "builtins/shared/text-decoder.h"
-#include "builtins/shared/text-encoder.h"
-#include "builtins/shared/url.h"
 #include "builtins/subtle-crypto.h"
 #include "builtins/transform-stream-default-controller.h"
 #include "builtins/transform-stream.h"
 #include "builtins/worker-location.h"
-#include "core/encode.h"
-#include "core/event_loop.h"
+#include "saru/builtin.h"
+#include "saru/builtins/console.h"
+#include "saru/builtins/dom-exception.h"
+#include "saru/builtins/performance.h"
+#include "saru/builtins/text-decoder.h"
+#include "saru/builtins/text-encoder.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
+#include "saru/event_loop.h"
 
 using namespace std::literals;
 
@@ -73,7 +73,8 @@ using std::chrono::ceil;
 using std::chrono::milliseconds;
 using std::chrono::system_clock;
 
-using builtins::Console;
+using saru::Console;
+using saru::HttpBody;
 
 using JS::CallArgs;
 using JS::CallArgsFromVp;
@@ -161,9 +162,9 @@ struct ReadResult {
 // Returns a UniqueChars and the length of that string. The UniqueChars value is not
 // null-terminated.
 ReadResult read_from_handle_all(JSContext *cx, uint32_t handle) {
-  std::vector<host_api::HostString> chunks;
+  std::vector<saru::String> chunks;
   size_t bytes_read = 0;
-  host_api::HttpBody body{handle};
+  HttpBody body{handle};
   while (true) {
     auto res = body.read(HANDLE_READ_CHUNK_SIZE);
     if (auto *err = res.to_err()) {
@@ -667,7 +668,7 @@ bool fetch(JSContext *cx, unsigned argc, Value *vp) {
     }
   }
 
-  host_api::HostString backend_chars = core::encode(cx, backend);
+  saru::String backend_chars = saru::encode(cx, backend);
   if (!backend_chars.ptr) {
     return ReturnPromiseRejectedWithPendingError(cx, args);
   }
@@ -712,7 +713,7 @@ bool fetch(JSContext *cx, unsigned argc, Value *vp) {
   // If the request body is streamed, we need to wait for streaming to complete before marking the
   // request as pending.
   if (!streaming) {
-    if (!core::EventLoop::queue_async_task(request))
+    if (!saru::EventLoop::queue_async_task(request))
       return ReturnPromiseRejectedWithPendingError(cx, args);
   }
 
@@ -799,9 +800,9 @@ JSObject *ReadStructuredClone(JSContext *cx, JSStructuredCloneReader *r,
   MOZ_ASSERT(tag == SCTAG_DOM_URLSEARCHPARAMS);
 
   RootedObject urlSearchParamsInstance(
-      cx, JS_NewObjectWithGivenProto(cx, &builtins::URLSearchParams::class_,
-                                     builtins::URLSearchParams::proto_obj));
-  RootedObject params_obj(cx, builtins::URLSearchParams::create(cx, urlSearchParamsInstance));
+      cx, JS_NewObjectWithGivenProto(cx, &saru::URLSearchParams::class_,
+                                     saru::URLSearchParams::proto_obj));
+  RootedObject params_obj(cx, saru::URLSearchParams::create(cx, urlSearchParamsInstance));
   if (!params_obj) {
     return nullptr;
   }
@@ -817,7 +818,7 @@ JSObject *ReadStructuredClone(JSContext *cx, JSStructuredCloneReader *r,
   }
 
   SpecString init((uint8_t *)bytes, len, len);
-  jsurl::params_init(builtins::URLSearchParams::get_params(params_obj), &init);
+  jsurl::params_init(saru::URLSearchParams::get_params(params_obj), &init);
 
   return params_obj;
 }
@@ -832,12 +833,12 @@ JSObject *ReadStructuredClone(JSContext *cx, JSStructuredCloneReader *r,
  */
 bool WriteStructuredClone(JSContext *cx, JSStructuredCloneWriter *w, JS::HandleObject obj,
                           bool *sameProcessScopeRequired, void *closure) {
-  if (!builtins::URLSearchParams::is_instance(obj)) {
+  if (!saru::URLSearchParams::is_instance(obj)) {
     JS_ReportErrorLatin1(cx, "The object could not be cloned");
     return false;
   }
 
-  auto slice = builtins::URLSearchParams::serialize(cx, obj);
+  auto slice = saru::URLSearchParams::serialize(cx, obj);
   if (!JS_WriteUint32Pair(w, SCTAG_DOM_URLSEARCHPARAMS, slice.len) ||
       !JS_WriteBytes(w, (void *)slice.data, slice.len)) {
     return false;
@@ -912,7 +913,7 @@ template <bool repeat> bool setTimeout_or_interval(JSContext *cx, unsigned argc,
     handler_args.infallibleAppend(args[i]);
   }
 
-  uint32_t id = core::EventLoop::add_timer(handler, delay, handler_args, repeat);
+  uint32_t id = saru::EventLoop::add_timer(handler, delay, handler_args, repeat);
 
   args.rval().setInt32(id);
   return true;
@@ -935,7 +936,7 @@ template <bool interval> bool clearTimeout_or_interval(JSContext *cx, unsigned a
     return false;
   }
 
-  core::EventLoop::remove_timer(uint32_t(id));
+  saru::EventLoop::remove_timer(uint32_t(id));
 
   args.rval().setUndefined();
   return true;
@@ -976,14 +977,14 @@ bool define_fastly_sys(JSContext *cx, HandleObject global, FastlyOptions options
   if (!GlobalProperties::init(cx, global))
     return false;
 
-  if (!builtins::DOMException::init_class(cx, global)) {
+  if (!saru::DOMException::init_class(cx, global)) {
     return false;
   }
   if (!builtins::Backend::init_class(cx, global))
     return false;
   if (!builtins::Fastly::create(cx, global, options))
     return false;
-  if (!builtins::Console::create(cx, global))
+  if (!saru::Console::create(cx, global))
     return false;
   if (!builtins::SubtleCrypto::init_class(cx, global))
     return false;
@@ -1020,17 +1021,17 @@ bool define_fastly_sys(JSContext *cx, HandleObject global, FastlyOptions options
     return false;
   if (!builtins::CacheOverride::init_class(cx, global))
     return false;
-  if (!builtins::TextEncoder::init_class(cx, global))
+  if (!saru::TextEncoder::init_class(cx, global))
     return false;
-  if (!builtins::TextDecoder::init_class(cx, global))
+  if (!saru::TextDecoder::init_class(cx, global))
     return false;
   if (!builtins::Logger::init_class(cx, global))
     return false;
-  if (!builtins::URL::init_class(cx, global))
+  if (!saru::URL::init_class(cx, global))
     return false;
-  if (!builtins::URLSearchParams::init_class(cx, global))
+  if (!saru::URLSearchParams::init_class(cx, global))
     return false;
-  if (!builtins::URLSearchParamsIterator::init_class(cx, global))
+  if (!saru::URLSearchParamsIterator::init_class(cx, global))
     return false;
   if (!builtins::WorkerLocation::init_class(cx, global))
     return false;
@@ -1048,14 +1049,14 @@ bool define_fastly_sys(JSContext *cx, HandleObject global, FastlyOptions options
   if (!builtins::SimpleCacheEntry::init_class(cx, global)) {
     return false;
   }
-  if (!builtins::Performance::init_class(cx, global)) {
+  if (!saru::Performance::init_class(cx, global)) {
     return false;
   }
-  if (!builtins::Performance::create(cx, global)) {
+  if (!saru::Performance::create(cx, global)) {
     return false;
   }
 
-  core::EventLoop::init(cx);
+  saru::EventLoop::init(cx);
 
   JS::RootedValue math_val(cx);
   if (!JS_GetProperty(cx, global, "Math", &math_val)) {
@@ -1083,7 +1084,7 @@ UniqueChars stringify_value(JSContext *cx, JS::HandleValue value) {
 
 bool debug_logging_enabled() { return builtins::Fastly::debug_logging_enabled; }
 
-void builtin_impl_console_log(Console::LogType log_ty, const char *msg) {
+void saru_impl_console_log(Console::LogType log_ty, const char *msg) {
   const char *prefix = "";
   switch (log_ty) {
   case Console::LogType::Log:
@@ -1123,7 +1124,7 @@ bool print_stack(JSContext *cx, HandleObject stack, FILE *fp) {
     return false;
   }
 
-  auto utf8chars = core::encode(cx, stackStr);
+  auto utf8chars = saru::encode(cx, stackStr);
   if (!utf8chars) {
     return false;
   }

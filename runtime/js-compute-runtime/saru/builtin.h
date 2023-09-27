@@ -1,5 +1,5 @@
-#ifndef JS_COMPUTE_RUNTIME_BUILTIN_H
-#define JS_COMPUTE_RUNTIME_BUILTIN_H
+#ifndef SARU_BUILTIN_H
+#define SARU_BUILTIN_H
 
 #include <optional>
 #include <span>
@@ -20,18 +20,28 @@
 #include "rust-url/rust-url.h"
 #pragma clang diagnostic pop
 
+/// The type of erros returned from the host.
+namespace saru {
+using Error = uint8_t;
+}
+
+void saru_handle_error(JSContext *cx, saru::Error err, int line, const char *func);
+
+/// Wrap up a call to handle_saru_error with the current line and function.
+#define HANDLE_ERROR(cx, err) ::saru_handle_error(cx, err, __LINE__, __func__)
+
 std::optional<std::span<uint8_t>> value_to_buffer(JSContext *cx, JS::HandleValue val,
                                                   const char *val_desc);
 enum JSBuiltinErrNum {
 #define MSG_DEF(name, count, exception, format) name,
-#include "./builtin-error-numbers.msg"
+#include "saru/builtin-error-numbers.msg"
 #undef MSG_DEF
   JSBuiltinErrNum_Limit
 };
 
 const JSErrorFormatString js_ErrorFormatStringBuiltin[JSBuiltinErrNum_Limit] = {
 #define MSG_DEF(name, count, exception, format) {#name, format, count, exception},
-#include "./builtin-error-numbers.msg"
+#include "saru/builtin-error-numbers.msg"
 #undef MSG_DEF
 };
 
@@ -126,7 +136,6 @@ inline bool ThrowIfNotConstructing(JSContext *cx, const JS::CallArgs &args,
                             builtinName);
   return false;
 }
-namespace builtins {
 
 template <typename Impl> class BuiltinImpl {
 private:
@@ -198,7 +207,5 @@ public:
            JS_DeleteProperty(cx, global, BuiltinImpl<Impl>::class_.name);
   }
 };
-
-} // namespace builtins
 
 #endif

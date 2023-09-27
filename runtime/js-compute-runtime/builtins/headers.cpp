@@ -1,9 +1,9 @@
 #include "builtins/headers.h"
 #include "builtins/request-response.h"
-#include "core/encode.h"
-#include "core/sequence.hpp"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/encode.h"
+#include "saru/sequence.hpp"
 
 #include "js/Conversions.h"
 
@@ -91,14 +91,14 @@ uint32_t get_handle(JSObject *self) {
  * JSString and the char* version, so they'd otherwise have to recreate one of
  * the two.
  */
-host_api::HostString normalize_header_name(JSContext *cx, JS::MutableHandleValue name_val,
-                                           const char *fun_name) {
+saru::String normalize_header_name(JSContext *cx, JS::MutableHandleValue name_val,
+                                   const char *fun_name) {
   JS::RootedString name_str(cx, JS::ToString(cx, name_val));
   if (!name_str) {
     return nullptr;
   }
 
-  auto name = core::encode(cx, name_str);
+  auto name = saru::encode(cx, name_str);
   if (!name) {
     return nullptr;
   }
@@ -135,14 +135,14 @@ host_api::HostString normalize_header_name(JSContext *cx, JS::MutableHandleValue
   return name;
 }
 
-host_api::HostString normalize_header_value(JSContext *cx, JS::MutableHandleValue value_val,
-                                            const char *fun_name) {
+saru::String normalize_header_value(JSContext *cx, JS::MutableHandleValue value_val,
+                                    const char *fun_name) {
   JS::RootedString value_str(cx, JS::ToString(cx, value_val));
   if (!value_str) {
     return nullptr;
   }
 
-  auto value = core::encode(cx, value_str);
+  auto value = saru::encode(cx, value_str);
   if (!value) {
     return nullptr;
   }
@@ -270,7 +270,7 @@ bool retrieve_value_for_header_from_handle(JSContext *cx, JS::HandleObject self,
   uint32_t handle = get_handle(self);
 
   JS::RootedString name_str(cx, name.toString());
-  auto name_chars = core::encode(cx, name_str);
+  auto name_chars = saru::encode(cx, name_str);
 
   auto ret = mode == Headers::Mode::ProxyToRequest
                  ? host_api::HttpReq{handle}.get_header_values(name_chars)
@@ -542,13 +542,13 @@ JSObject *Headers::create(JSContext *cx, JS::HandleObject self, Headers::Mode mo
     return nullptr;
 
   bool consumed = false;
-  if (!core::maybe_consume_sequence_or_record<Headers::append_header_value>(cx, initv, headers,
+  if (!saru::maybe_consume_sequence_or_record<Headers::append_header_value>(cx, initv, headers,
                                                                             &consumed, "Headers")) {
     return nullptr;
   }
 
   if (!consumed) {
-    core::report_sequence_or_record_arg_error(cx, "Headers", "");
+    saru::report_sequence_or_record_arg_error(cx, "Headers", "");
     return nullptr;
   }
 

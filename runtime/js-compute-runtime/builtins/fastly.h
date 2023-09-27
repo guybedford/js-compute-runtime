@@ -1,8 +1,8 @@
 #ifndef JS_COMPUTE_RUNTIME_BUILTIN_FASTLY_H
 #define JS_COMPUTE_RUNTIME_BUILTIN_FASTLY_H
 
-#include "builtin.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
 
 namespace builtins {
 

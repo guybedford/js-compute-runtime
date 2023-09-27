@@ -4,12 +4,12 @@
 // TODO: remove these once the warnings are fixed
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
+#include "js/ForOfIterator.h"
 #include "jsapi.h"
 #include "jsfriendapi.h"
-#include "js/ForOfIterator.h"
 #pragma clang diagnostic pop
 
-namespace core {
+namespace saru {
 
 inline bool report_sequence_or_record_arg_error(JSContext *cx, const char *name,
                                                 const char *alt_text) {
@@ -119,6 +119,6 @@ bool maybe_consume_sequence_or_record(JSContext *cx, JS::HandleValue initv, JS::
   return true;
 }
 
-}
+} // namespace saru
 
 #endif

@@ -6,11 +6,11 @@
 #include "builtins/fetch-event.h"
 #include "builtins/kv-store.h"
 #include "builtins/native-stream-source.h"
-#include "builtins/shared/url.h"
 #include "builtins/transform-stream.h"
-#include "core/encode.h"
-#include "core/event_loop.h"
 #include "host_interface/host_api.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
+#include "saru/event_loop.h"
 #include "third_party/picosha2.h"
 
 #include "js/Array.h"
@@ -60,8 +60,8 @@ struct ReadResult {
 
 // Returns a UniqueChars and the length of that string. The UniqueChars value is not
 // null-terminated.
-ReadResult read_from_handle_all(JSContext *cx, host_api::HttpBody body) {
-  std::vector<host_api::HostString> chunks;
+ReadResult read_from_handle_all(JSContext *cx, HttpBody body) {
+  std::vector<saru::String> chunks;
   size_t bytes_read = 0;
   while (true) {
     auto res = body.read(HANDLE_READ_CHUNK_SIZE);
@@ -135,9 +135,9 @@ bool RequestOrResponse::has_body(JSObject *obj) {
   return JS::GetReservedSlot(obj, static_cast<uint32_t>(Slots::HasBody)).toBoolean();
 }
 
-host_api::HttpBody RequestOrResponse::body_handle(JSObject *obj) {
+HttpBody RequestOrResponse::body_handle(JSObject *obj) {
   MOZ_ASSERT(is_instance(obj));
-  return host_api::HttpBody(JS::GetReservedSlot(obj, static_cast<uint32_t>(Slots::Body)).toInt32());
+  return HttpBody(JS::GetReservedSlot(obj, static_cast<uint32_t>(Slots::Body)).toInt32());
 }
 
 JSObject *RequestOrResponse::body_stream(JSObject *obj) {
@@ -293,14 +293,14 @@ bool RequestOrResponse::extract_body(JSContext *cx, JS::HandleObject self,
     } else if (body_obj && JS::IsArrayBufferObject(body_obj)) {
       bool is_shared;
       JS::GetArrayBufferLengthAndData(body_obj, &length, &is_shared, (uint8_t **)&buf);
-    } else if (body_obj && builtins::URLSearchParams::is_instance(body_obj)) {
-      auto slice = builtins::URLSearchParams::serialize(cx, body_obj);
+    } else if (body_obj && saru::URLSearchParams::is_instance(body_obj)) {
+      auto slice = saru::URLSearchParams::serialize(cx, body_obj);
       buf = (char *)slice.data;
       length = slice.len;
       content_type = "application/x-www-form-urlencoded;charset=UTF-8";
     } else {
       {
-        auto str = core::encode(cx, body_val);
+        auto str = saru::encode(cx, body_val);
         text = std::move(str.ptr);
         length = str.len;
       }
@@ -311,7 +311,7 @@ bool RequestOrResponse::extract_body(JSContext *cx, JS::HandleObject self,
       content_type = "text/plain;charset=UTF-8";
     }
 
-    host_api::HttpBody body{RequestOrResponse::body_handle(self)};
+    HttpBody body{RequestOrResponse::body_handle(self)};
     auto write_res = body.write_all(reinterpret_cast<uint8_t *>(buf), length);
 
     // Ensure that the NoGC is reset, so throwing an error in HANDLE_ERROR
@@ -346,8 +346,8 @@ JSObject *RequestOrResponse::maybe_headers(JSObject *obj) {
 
 bool RequestOrResponse::append_body(JSContext *cx, JS::HandleObject self, JS::HandleObject source) {
   MOZ_ASSERT(!body_used(source));
-  host_api::HttpBody source_body{body_handle(source)};
-  host_api::HttpBody dest_body{body_handle(self)};
+  HttpBody source_body{body_handle(source)};
+  HttpBody dest_body{body_handle(self)};
   auto res = dest_body.append(source_body);
   if (auto *err = res.to_err()) {
     HANDLE_ERROR(cx, *err);
@@ -811,7 +811,7 @@ bool RequestOrResponse::body_source_pull_algorithm(JSContext *cx, JS::CallArgs a
   // (This deadlock happens in automated tests, but admittedly might not happen
   // in real usage.)
 
-  if (!core::EventLoop::queue_async_task(source))
+  if (!saru::EventLoop::queue_async_task(source))
     return false;
 
   args.rval().setUndefined();
@@ -859,7 +859,7 @@ bool RequestOrResponse::body_reader_then_handler(JSContext *cx, JS::HandleObject
     }
 
     if (Request::is_instance(body_owner)) {
-      if (!core::EventLoop::queue_async_task(body_owner)) {
+      if (!saru::EventLoop::queue_async_task(body_owner)) {
         return false;
       }
     }
@@ -1098,7 +1098,7 @@ JSString *Request::method(JSContext *cx, JS::HandleObject obj) {
 bool Request::set_cache_key(JSContext *cx, JS::HandleObject self, JS::HandleValue cache_key_val) {
   MOZ_ASSERT(is_instance(self));
   // Convert the key argument into a String following https://tc39.es/ecma262/#sec-tostring
-  auto keyString = core::encode(cx, cache_key_val);
+  auto keyString = saru::encode(cx, cache_key_val);
   if (!keyString) {
     return false;
   }
@@ -1186,11 +1186,11 @@ bool Request::apply_cache_override(JSContext *cx, JS::HandleObject self) {
     stale_while_revalidate = val.toInt32();
   }
 
-  host_api::HostString sk_chars;
+  saru::String sk_chars;
   std::optional<std::string_view> surrogate_key;
   val = builtins::CacheOverride::surrogate_key(override);
   if (!val.isUndefined()) {
-    sk_chars = core::encode(cx, val);
+    sk_chars = saru::encode(cx, val);
     if (!sk_chars) {
       return false;
     }
@@ -1356,7 +1356,7 @@ bool Request::clone(JSContext *cx, unsigned argc, JS::Value *vp) {
       return false;
     }
 
-    auto res = host_api::HttpBody::make();
+    auto res = HttpBody::make();
     if (auto *err = res.to_err()) {
       HANDLE_ERROR(cx, *err);
       return false;
@@ -1467,7 +1467,7 @@ bool Request::init_class(JSContext *cx, JS::HandleObject global) {
 }
 
 JSObject *Request::create(JSContext *cx, JS::HandleObject requestInstance,
-                          host_api::HttpReq request_handle, host_api::HttpBody body_handle,
+                          host_api::HttpReq request_handle, HttpBody body_handle,
                           bool is_downstream) {
   JS::SetReservedSlot(requestInstance, static_cast<uint32_t>(Slots::Request),
                       JS::Int32Value(request_handle.handle));
@@ -1502,7 +1502,7 @@ JSObject *Request::create(JSContext *cx, JS::HandleObject requestInstance, JS::H
     return nullptr;
   }
 
-  auto body = host_api::HttpBody::make();
+  auto body = HttpBody::make();
   if (auto *err = body.to_err()) {
     HANDLE_ERROR(cx, *err);
     return nullptr;
@@ -1593,12 +1593,12 @@ JSObject *Request::create(JSContext *cx, JS::HandleObject requestInstance, JS::H
   else {
     // 1.  Let `parsedURL` be the result of parsing `input` with `baseURL`.
     JS::RootedObject url_instance(
-        cx, JS_NewObjectWithGivenProto(cx, &builtins::URL::class_, builtins::URL::proto_obj));
+        cx, JS_NewObjectWithGivenProto(cx, &saru::URL::class_, saru::URL::proto_obj));
     if (!url_instance)
       return nullptr;
 
     JS::RootedObject parsedURL(
-        cx, builtins::URL::create(cx, url_instance, input, builtins::Fastly::baseURL));
+        cx, saru::URL::create(cx, url_instance, input, builtins::Fastly::baseURL));
 
     // 2.  If `parsedURL` is failure, then throw a `TypeError`.
     if (!parsedURL) {
@@ -1622,7 +1622,7 @@ JSObject *Request::create(JSContext *cx, JS::HandleObject requestInstance, JS::H
 
   // Actually set the URL derived in steps 5 or 6 above.
   RequestOrResponse::set_url(request, StringValue(url_str));
-  auto url = core::encode(cx, url_str);
+  auto url = saru::encode(cx, url_str);
   if (!url) {
     return nullptr;
   } else {
@@ -1753,7 +1753,7 @@ JSObject *Request::create(JSContext *cx, JS::HandleObject requestInstance, JS::H
   bool is_get_or_head = is_get;
 
   if (!is_get) {
-    auto method = core::encode(cx, method_str);
+    auto method = saru::encode(cx, method_str);
     if (!method) {
       return nullptr;
     }
@@ -2329,19 +2329,19 @@ bool Response::redirect(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto url = args.get(0);
   // 1. Let parsedURL be the result of parsing url with current settings object’s API base URL.
   JS::RootedObject urlInstance(
-      cx, JS_NewObjectWithGivenProto(cx, &builtins::URL::class_, builtins::URL::proto_obj));
+      cx, JS_NewObjectWithGivenProto(cx, &saru::URL::class_, saru::URL::proto_obj));
   if (!urlInstance) {
     return false;
   }
-  JS::RootedObject parsedURL(
-      cx, builtins::URL::create(cx, urlInstance, url, builtins::Fastly::baseURL));
+  JS::RootedObject parsedURL(cx,
+                             saru::URL::create(cx, urlInstance, url, builtins::Fastly::baseURL));
   // 2. If parsedURL is failure, then throw a TypeError.
   if (!parsedURL) {
     JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_RESPONSE_REDIRECT_INVALID_URI);
     return false;
   }
   JS::RootedValue url_val(cx, JS::ObjectValue(*parsedURL));
-  auto url_str = core::encode(cx, url_val);
+  auto url_str = saru::encode(cx, url_val);
   if (!url_str) {
     return false;
   }
@@ -2373,7 +2373,7 @@ bool Response::redirect(JSContext *cx, unsigned argc, JS::Value *vp) {
     return false;
   }
 
-  auto make_res = host_api::HttpBody::make();
+  auto make_res = HttpBody::make();
   if (auto *err = make_res.to_err()) {
     HANDLE_ERROR(cx, *err);
     return false;
@@ -2514,7 +2514,7 @@ bool Response::json(JSContext *cx, unsigned argc, JS::Value *vp) {
     return false;
   }
 
-  auto make_res = host_api::HttpBody::make();
+  auto make_res = HttpBody::make();
   if (auto *err = make_res.to_err()) {
     HANDLE_ERROR(cx, *err);
     return false;
@@ -2522,7 +2522,7 @@ bool Response::json(JSContext *cx, unsigned argc, JS::Value *vp) {
 
   auto body = make_res.unwrap();
   JS::RootedString string(cx, JS_NewUCStringCopyN(cx, out.c_str(), out.length()));
-  auto stringChars = core::encode(cx, string);
+  auto stringChars = saru::encode(cx, string);
 
   auto write_res =
       body.write_all(reinterpret_cast<uint8_t *>(stringChars.begin()), stringChars.len);
@@ -2689,7 +2689,7 @@ bool Response::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
     return false;
   }
 
-  auto make_res = host_api::HttpBody::make();
+  auto make_res = HttpBody::make();
   if (auto *err = make_res.to_err()) {
     HANDLE_ERROR(cx, *err);
     return false;
@@ -2787,7 +2787,7 @@ bool Response::init_class(JSContext *cx, JS::HandleObject global) {
 }
 
 JSObject *Response::create(JSContext *cx, JS::HandleObject response,
-                           host_api::HttpResp response_handle, host_api::HttpBody body_handle,
+                           host_api::HttpResp response_handle, HttpBody body_handle,
                            bool is_upstream, bool is_grip, JS::UniqueChars backend) {
   // MOZ_ASSERT(cx);
   // MOZ_ASSERT(is_instance(response));

@@ -1,9 +1,9 @@
-#ifndef JS_COMPUTE_RUNTIME_BUILTIN_DOM_EXCEPTION_H
-#define JS_COMPUTE_RUNTIME_BUILTIN_DOM_EXCEPTION_H
+#ifndef SARU_BUILTIN_DOM_EXCEPTION_H
+#define SARU_BUILTIN_DOM_EXCEPTION_H
 
-#include "builtin.h"
+#include "saru/builtin.h"
 
-namespace builtins {
+namespace saru {
 
 class DOMException : public BuiltinImpl<DOMException> {
 private:
@@ -27,6 +27,6 @@ public:
   static void raise(JSContext *cx, std::string_view message, std::string_view name);
 };
 
-} // namespace builtins
+} // namespace saru
 
 #endif

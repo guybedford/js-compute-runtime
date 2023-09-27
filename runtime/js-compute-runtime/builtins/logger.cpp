@@ -1,6 +1,6 @@
 #include "logger.h"
-#include "core/encode.h"
 #include "host_interface/host_api.h"
+#include "saru/encode.h"
 
 namespace builtins {
 
@@ -9,7 +9,7 @@ bool Logger::log(JSContext *cx, unsigned argc, JS::Value *vp) {
 
   host_api::LogEndpoint endpoint(JS::GetReservedSlot(self, Logger::Slots::Endpoint).toInt32());
 
-  auto msg = core::encode(cx, args.get(0));
+  auto msg = saru::encode(cx, args.get(0));
   if (!msg) {
     return false;
   }
@@ -57,7 +57,7 @@ bool Logger::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
   REQUEST_HANDLER_ONLY("The Logger builtin");
   CTOR_HEADER("Logger", 1);
 
-  auto name = core::encode(cx, args[0]);
+  auto name = saru::encode(cx, args[0]);
   auto handle_res = host_api::LogEndpoint::get(name);
   if (auto *err = handle_res.to_err()) {
     HANDLE_ERROR(cx, *err);

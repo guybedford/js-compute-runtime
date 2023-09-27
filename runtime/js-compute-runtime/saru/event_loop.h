@@ -1,5 +1,5 @@
-#ifndef JS_COMPUTE_RUNTIME_EVENT_LOOP_H
-#define JS_COMPUTE_RUNTIME_EVENT_LOOP_H
+#ifndef SARU_EVENT_LOOP_H
+#define SARU_EVENT_LOOP_H
 
 #include "host_interface/host_api.h"
 
@@ -10,7 +10,7 @@
 #include "jsapi.h"
 #pragma clang diagnostic pop
 
-namespace core {
+namespace saru {
 
 class EventLoop {
 public:

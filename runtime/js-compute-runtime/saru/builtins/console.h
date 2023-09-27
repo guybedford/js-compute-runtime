@@ -1,9 +1,9 @@
-#ifndef JS_COMPUTE_RUNTIME_BUILTIN_CONSOLE_H
-#define JS_COMPUTE_RUNTIME_BUILTIN_CONSOLE_H
+#ifndef SARU_BUILTIN_CONSOLE_H
+#define SARU_BUILTIN_CONSOLE_H
 
-#include "builtin.h"
+#include "saru/builtin.h"
 
-namespace builtins {
+namespace saru {
 
 class Console : public BuiltinNoConstructor<Console> {
 private:
@@ -23,8 +23,6 @@ public:
   static bool create(JSContext *cx, JS::HandleObject global);
 };
 
-} // namespace builtins
-
-void builtin_impl_console_log(builtins::Console::LogType log_ty, const char *msg);
+} // namespace saru
 
 #endif

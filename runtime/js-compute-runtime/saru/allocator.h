@@ -1,5 +1,5 @@
-#ifndef JS_COMPUTE_RUNTIME_ALLOCATOR_H
-#define JS_COMPUTE_RUNTIME_ALLOCATOR_H
+#ifndef SARU_ALLOCATOR_H
+#define SARU_ALLOCATOR_H
 
 #include <cstddef>
 

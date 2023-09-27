@@ -158,7 +158,10 @@ $(OBJ_DIR)/impl:
 $(OBJ_DIR)/builtins:
 	$(call cmd,mkdir,$@)
 
-$(OBJ_DIR)/builtins/shared:
+$(OBJ_DIR)/saru:
+	$(call cmd,mkdir,$@)
+
+$(OBJ_DIR)/saru/builtins:
 	$(call cmd,mkdir,$@)
 
 $(OBJ_DIR)/core:
@@ -292,12 +295,14 @@ endif
 
 FSM_CPP := $(wildcard $(FSM_SRC)/*.cpp)
 FSM_CPP += $(wildcard $(FSM_SRC)/builtins/*.cpp)
-FSM_CPP += $(wildcard $(FSM_SRC)/builtins/shared/*.cpp)
-FSM_CPP += $(wildcard $(FSM_SRC)/core/*.cpp)
+FSM_CPP += $(wildcard $(FSM_SRC)/saru/builtins/*.cpp)
+FSM_CPP += $(wildcard $(FSM_SRC)/saru/*.cpp)
 FSM_CPP += $(wildcard $(FSM_SRC)/host_interface/*.cpp)
 FSM_CPP += $(FSM_SRC)/third_party/fmt/src/format.cc
 FSM_OBJ := $(call build_dest,$(call change_cxx_extension,$(FSM_CPP),o))
 
+test:
+	echo $(FSM_OBJ)
 
 # Build all the above object files
 $(foreach source,$(FSM_CPP),$(eval $(call compile_cxx,$(source))))
@@ -362,7 +367,7 @@ $(OBJ_DIR)/shared: $(OBJ_DIR)/builtins.a $(RUST_URL_LIB) $(RUST_ENCODING_LIB)
 $(OBJ_DIR)/shared.a: | $(OBJ_DIR)/shared
 	$(call cmd,wasi_ar,$(wildcard $(OBJ_DIR)/shared/*.o))
 
-$(OBJ_DIR)/builtins.a: $(filter $(OBJ_DIR)/builtins/shared/%.o,$(FSM_OBJ))
+$(OBJ_DIR)/builtins.a: $(filter $(OBJ_DIR)/saru/builtins/%.o,$(FSM_OBJ))
 $(OBJ_DIR)/builtins.a: $(OBJ_DIR)/builtin.o
 $(OBJ_DIR)/builtins.a: $(OBJ_DIR)/core/encode.o
 	$(call cmd,wasi_ar,$^)

@@ -7,14 +7,16 @@
 #include <span>
 #include <vector>
 
-#include "builtins/shared/dom-exception.h"
-#include "core/encode.h"
 #include "crypto-algorithm.h"
 #include "crypto-key-ec-components.h"
 #include "crypto-key-rsa-components.h"
 #include "js-compute-builtins.h"
+#include "saru/builtins/dom-exception.h"
+#include "saru/encode.h"
 
 namespace builtins {
+
+using saru::DOMException;
 
 namespace {
 int numBitsToBytes(int x) { return (x / 8) + (7 + (x % 8)) / 8; }
@@ -74,7 +76,7 @@ const EVP_MD *createDigestAlgorithm(JSContext *cx, JS::HandleObject key) {
   JS::RootedObject hash(cx, &hash_val.toObject());
   JS::RootedValue name_val(cx);
   JS_GetProperty(cx, hash, "name", &name_val);
-  auto name_chars = core::encode(cx, name_val);
+  auto name_chars = saru::encode(cx, name_val);
   if (!name_chars) {
     DOMException::raise(cx, "NotSupportedError", "NotSupportedError");
     return nullptr;
@@ -401,7 +403,7 @@ std::optional<builtins::NamedCurve> toNamedCurve(std::string_view name) {
 }
 
 JS::Result<builtins::NamedCurve> toNamedCurve(JSContext *cx, JS::HandleValue value) {
-  auto nameChars = core::encode(cx, value);
+  auto nameChars = saru::encode(cx, value);
   auto name = toNamedCurve(nameChars);
   if (name.has_value()) {
     return name.value();
@@ -416,7 +418,7 @@ JS::Result<size_t> curveSize(JSContext *cx, JS::HandleObject key) {
 
   JS::RootedValue namedCurve_val(cx);
   JS_GetProperty(cx, alg, "namedCurve", &namedCurve_val);
-  auto namedCurve_chars = core::encode(cx, namedCurve_val);
+  auto namedCurve_chars = saru::encode(cx, namedCurve_val);
   if (!namedCurve_chars) {
     return JS::Result<size_t>(JS::Error());
   }
@@ -481,7 +483,7 @@ JS::Result<CryptoAlgorithmIdentifier> normalizeIdentifier(JSContext *cx, JS::Han
 
   // TODO: We convert from JSString to std::string quite a lot in the codebase, should we pull this
   // logic out into a new function?
-  auto algorithmChars = core::encode(cx, algName);
+  auto algorithmChars = saru::encode(cx, algName);
   if (!algorithmChars) {
     return JS::Result<CryptoAlgorithmIdentifier>(JS::Error());
   }

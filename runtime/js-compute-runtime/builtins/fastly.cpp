@@ -8,16 +8,18 @@
 #include "js/Conversions.h"
 #include "js/JSON.h"
 
-#include "builtin.h"
 #include "builtins/env.h"
 #include "builtins/fastly.h"
+#include "builtins/geo_ip.h"
 #include "builtins/logger.h"
 #include "builtins/request-response.h"
-#include "builtins/shared/url.h"
-#include "core/encode.h"
-#include "core/geo_ip.h"
+#include "saru/builtin.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
 
 namespace builtins {
+
+using saru::URL;
 
 bool Fastly::debug_logging_enabled = false;
 
@@ -59,7 +61,7 @@ bool Fastly::getGeolocationForIpAddress(JSContext *cx, unsigned argc, JS::Value 
   if (!address_str)
     return false;
 
-  JS::RootedString geo_info_str(cx, core::get_geo_info(cx, address_str));
+  JS::RootedString geo_info_str(cx, builtins::get_geo_info(cx, address_str));
   if (!geo_info_str)
     return false;
 
@@ -76,7 +78,7 @@ bool Fastly::getLogger(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (!args.requireAtLeast(cx, "fastly.getLogger", 1))
     return false;
 
-  auto name = core::encode(cx, args[0]);
+  auto name = saru::encode(cx, args[0]);
   if (!name)
     return false;
 
@@ -96,7 +98,7 @@ bool Fastly::includeBytes(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (!args.requireAtLeast(cx, "fastly.includeBytes", 1))
     return false;
 
-  auto path = core::encode(cx, args[0]);
+  auto path = saru::encode(cx, args[0]);
   if (!path) {
     return false;
   }
@@ -149,7 +151,7 @@ bool Fastly::createFanoutHandoff(JSContext *cx, unsigned argc, JS::Value *vp) {
     HANDLE_ERROR(cx, *err);
     return false;
   }
-  auto body_handle = host_api::HttpBody::make();
+  auto body_handle = HttpBody::make();
   if (auto *err = body_handle.to_err()) {
     HANDLE_ERROR(cx, *err);
     return false;
@@ -162,7 +164,7 @@ bool Fastly::createFanoutHandoff(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   auto backend_value = args.get(1);
-  auto backend_chars = core::encode(cx, backend_value);
+  auto backend_chars = saru::encode(cx, backend_value);
   if (!backend_chars) {
     return false;
   }

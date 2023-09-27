@@ -1,9 +1,9 @@
-#ifndef JS_COMPUTE_RUNTIME_BUILTIN_PERFORMANCE_H
-#define JS_COMPUTE_RUNTIME_BUILTIN_PERFORMANCE_H
+#ifndef SARU_BUILTIN_PERFORMANCE_H
+#define SARU_BUILTIN_PERFORMANCE_H
 
-#include "builtin.h"
+#include "saru/builtin.h"
 
-namespace builtins {
+namespace saru {
 
 class Performance : public BuiltinImpl<Performance> {
 private:
@@ -25,6 +25,6 @@ public:
   static bool init_class(JSContext *cx, JS::HandleObject global);
 };
 
-} // namespace builtins
+} // namespace saru
 
 #endif

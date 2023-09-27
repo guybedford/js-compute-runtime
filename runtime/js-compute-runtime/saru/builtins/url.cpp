@@ -1,16 +1,16 @@
 #include "js/Array.h"
 
-#include "builtin.h"
-#include "builtins/shared/url.h"
-#include "core/encode.h"
-#include "core/sequence.hpp"
 #include "rust-url/rust-url.h"
+#include "saru/builtin.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
+#include "saru/sequence.hpp"
 
 constexpr int ITERTYPE_ENTRIES = 0;
 constexpr int ITERTYPE_KEYS = 1;
 constexpr int ITERTYPE_VALUES = 2;
 
-namespace builtins {
+namespace saru {
 
 bool URLSearchParamsIterator::next(JSContext *cx, unsigned argc, JS::Value *vp) {
   METHOD_HEADER(0)
@@ -178,11 +178,11 @@ bool append_impl(JSContext *cx, JS::HandleObject self, JS::HandleValue key, JS::
                  const char *_) {
   const auto params = URLSearchParams::get_params(self);
 
-  auto name = core::encode_spec_string(cx, key);
+  auto name = saru::encode_spec_string(cx, key);
   if (!name.data)
     return false;
 
-  auto value = core::encode_spec_string(cx, val);
+  auto value = saru::encode_spec_string(cx, val);
   if (!value.data)
     return false;
 
@@ -210,7 +210,7 @@ bool URLSearchParams::delete_(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto *params =
       static_cast<jsurl::JSUrlSearchParams *>(JS::GetReservedSlot(self, Slots::Params).toPrivate());
 
-  auto name = core::encode_spec_string(cx, args.get(0));
+  auto name = saru::encode_spec_string(cx, args.get(0));
   if (!name.data)
     return false;
 
@@ -224,7 +224,7 @@ bool URLSearchParams::has(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto *params =
       static_cast<jsurl::JSUrlSearchParams *>(JS::GetReservedSlot(self, Slots::Params).toPrivate());
 
-  auto name = core::encode_spec_string(cx, args.get(0));
+  auto name = saru::encode_spec_string(cx, args.get(0));
   if (!name.data)
     return false;
 
@@ -237,7 +237,7 @@ bool URLSearchParams::get(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto *params = static_cast<const jsurl::JSUrlSearchParams *>(
       JS::GetReservedSlot(self, Slots::Params).toPrivate());
 
-  auto name = core::encode_spec_string(cx, args.get(0));
+  auto name = saru::encode_spec_string(cx, args.get(0));
   if (!name.data)
     return false;
 
@@ -260,7 +260,7 @@ bool URLSearchParams::getAll(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto *params = static_cast<const jsurl::JSUrlSearchParams *>(
       JS::GetReservedSlot(self, Slots::Params).toPrivate());
 
-  auto name = core::encode_spec_string(cx, args.get(0));
+  auto name = saru::encode_spec_string(cx, args.get(0));
   if (!name.data)
     return false;
 
@@ -293,11 +293,11 @@ bool URLSearchParams::set(JSContext *cx, unsigned argc, JS::Value *vp) {
   auto *params =
       static_cast<jsurl::JSUrlSearchParams *>(JS::GetReservedSlot(self, Slots::Params).toPrivate());
 
-  auto name = core::encode_spec_string(cx, args[0]);
+  auto name = saru::encode_spec_string(cx, args[0]);
   if (!name.data)
     return false;
 
-  auto value = core::encode_spec_string(cx, args[1]);
+  auto value = saru::encode_spec_string(cx, args[1]);
   if (!value.data)
     return false;
 
@@ -380,7 +380,7 @@ bool URLSearchParams::forEach(JSContext *cx, unsigned argc, JS::Value *vp) {
   bool URLSearchParams::name(JSContext *cx, unsigned argc, JS::Value *vp) {                        \
     METHOD_HEADER(0)                                                                               \
                                                                                                    \
-    JS::RootedObject iter(cx, builtins::URLSearchParamsIterator::create(cx, self, type));          \
+    JS::RootedObject iter(cx, saru::URLSearchParamsIterator::create(cx, self, type));              \
     if (!iter)                                                                                     \
       return false;                                                                                \
     args.rval().setObject(*iter);                                                                  \
@@ -425,13 +425,13 @@ JSObject *URLSearchParams::create(JSContext *cx, JS::HandleObject self,
 
   bool consumed = false;
   const char *alt_text = ", or a value that can be stringified";
-  if (!core::maybe_consume_sequence_or_record<append_impl>(cx, params_val, self, &consumed,
+  if (!saru::maybe_consume_sequence_or_record<append_impl>(cx, params_val, self, &consumed,
                                                            "URLSearchParams", alt_text)) {
     return nullptr;
   }
 
   if (!consumed) {
-    auto init = core::encode_spec_string(cx, params_val);
+    auto init = saru::encode_spec_string(cx, params_val);
     if (!init.data)
       return nullptr;
 
@@ -479,7 +479,7 @@ JSObject *URLSearchParams::create(JSContext *cx, JS::HandleObject self, jsurl::J
     jsurl::JSUrl *url =                                                                            \
         static_cast<jsurl::JSUrl *>(JS::GetReservedSlot(self, URL::Slots::Url).toPrivate());       \
                                                                                                    \
-    jsurl::SpecString str = core::encode_spec_string(cx, args.get(0));                             \
+    jsurl::SpecString str = saru::encode_spec_string(cx, args.get(0));                             \
     if (!str.data) {                                                                               \
       return false;                                                                                \
     }                                                                                              \
@@ -565,11 +565,11 @@ bool URL::searchParams_get(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (params_val.isNullOrUndefined()) {
     auto *url = static_cast<jsurl::JSUrl *>(JS::GetReservedSlot(self, Slots::Url).toPrivate());
     JS::RootedObject url_search_params_instance(
-        cx, JS_NewObjectWithGivenProto(cx, &builtins::URLSearchParams::class_,
-                                       builtins::URLSearchParams::proto_obj));
+        cx, JS_NewObjectWithGivenProto(cx, &saru::URLSearchParams::class_,
+                                       saru::URLSearchParams::proto_obj));
     if (!url_search_params_instance)
       return false;
-    params = builtins::URLSearchParams::create(cx, url_search_params_instance, url);
+    params = saru::URLSearchParams::create(cx, url_search_params_instance, url);
     if (!params)
       return false;
     JS::SetReservedSlot(self, Slots::Params, JS::ObjectValue(*params));
@@ -626,7 +626,7 @@ JSObject *URL::create(JSContext *cx, JS::HandleObject self, jsurl::SpecString ur
 
 JSObject *URL::create(JSContext *cx, JS::HandleObject self, JS::HandleValue url_val,
                       const jsurl::JSUrl *base) {
-  auto str = core::encode_spec_string(cx, url_val);
+  auto str = saru::encode_spec_string(cx, url_val);
   if (!str.data)
     return nullptr;
 
@@ -652,7 +652,7 @@ JSObject *URL::create(JSContext *cx, JS::HandleObject self, JS::HandleValue url_
   jsurl::JSUrl *base = nullptr;
 
   if (!base_val.isUndefined()) {
-    auto str = core::encode_spec_string(cx, base_val);
+    auto str = saru::encode_spec_string(cx, base_val);
     if (!str.data)
       return nullptr;
 
@@ -670,4 +670,4 @@ bool URL::init_class(JSContext *cx, JS::HandleObject global) {
   return URL::init_class_impl(cx, global);
 }
 
-} // namespace builtins
+} // namespace saru

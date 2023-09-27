@@ -5,8 +5,8 @@
 #include "js/experimental/TypedData.h" // used in "js/Conversions.h"
 #pragma clang diagnostic pop
 
-#include "builtins/shared/dom-exception.h"
 #include "crypto.h"
+#include "saru/builtins/dom-exception.h"
 #include "subtle-crypto.h"
 
 bool is_int_typed_array(JSObject *obj) {
@@ -16,6 +16,9 @@ bool is_int_typed_array(JSObject *obj) {
 }
 
 namespace builtins {
+
+using saru::DOMException;
+
 #define MAX_BYTE_LENGTH 65536
 /**
  * Implementation of

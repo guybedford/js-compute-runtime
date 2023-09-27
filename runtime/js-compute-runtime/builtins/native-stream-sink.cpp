@@ -7,9 +7,9 @@
 
 #include "js/Stream.h"
 
-#include "builtin.h"
 #include "builtins/native-stream-sink.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
 
 // A JS class to use as the underlying sink for native writable streams, used
 // for TransformStream.

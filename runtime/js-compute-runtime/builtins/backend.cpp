@@ -19,9 +19,9 @@
 
 #include "builtins/backend.h"
 #include "builtins/request-response.h"
-#include "core/encode.h"
 #include "js-compute-builtins.h"
 #include "js/Conversions.h"
+#include "saru/encode.h"
 
 enum class Authentication : uint8_t {
   RSA,
@@ -713,11 +713,11 @@ JS::Result<mozilla::Ok> Backend::register_dynamic_backend(JSContext *cx, JS::Han
   MOZ_ASSERT(is_instance(backend));
 
   JS::RootedString name(cx, JS::GetReservedSlot(backend, Backend::Slots::Name).toString());
-  auto nameChars = core::encode(cx, name);
+  auto nameChars = saru::encode(cx, name);
   std::string_view name_str = nameChars;
 
   JS::RootedString target(cx, JS::GetReservedSlot(backend, Backend::Slots::Target).toString());
-  auto targetChars = core::encode(cx, target);
+  auto targetChars = saru::encode(cx, target);
   std::string_view target_str = targetChars;
 
   host_api::BackendConfig backend_config;
@@ -725,7 +725,7 @@ JS::Result<mozilla::Ok> Backend::register_dynamic_backend(JSContext *cx, JS::Han
   auto hostOverrideSlot = JS::GetReservedSlot(backend, Backend::Slots::HostOverride);
   if (!hostOverrideSlot.isNullOrUndefined()) {
     JS::RootedString hostOverrideString(cx, hostOverrideSlot.toString());
-    auto hostOverrideChars = core::encode(cx, hostOverrideString);
+    auto hostOverrideChars = saru::encode(cx, hostOverrideString);
     backend_config.host_override.emplace(std::move(hostOverrideChars));
   }
 
@@ -767,28 +767,28 @@ JS::Result<mozilla::Ok> Backend::register_dynamic_backend(JSContext *cx, JS::Han
   auto certificateHostnameSlot = JS::GetReservedSlot(backend, Backend::Slots::CertificateHostname);
   if (!certificateHostnameSlot.isNullOrUndefined()) {
     JS::RootedString certificateHostnameString(cx, certificateHostnameSlot.toString());
-    auto certificateHostnameChars = core::encode(cx, certificateHostnameString);
+    auto certificateHostnameChars = saru::encode(cx, certificateHostnameString);
     backend_config.cert_hostname.emplace(std::move(certificateHostnameChars));
   }
 
   auto caCertificateSlot = JS::GetReservedSlot(backend, Backend::Slots::CaCertificate);
   if (!caCertificateSlot.isNullOrUndefined()) {
     JS::RootedString caCertificateString(cx, caCertificateSlot.toString());
-    auto caCertificateChars = core::encode(cx, caCertificateString);
+    auto caCertificateChars = saru::encode(cx, caCertificateString);
     backend_config.ca_cert.emplace(std::move(caCertificateChars));
   }
 
   auto ciphersSlot = JS::GetReservedSlot(backend, Backend::Slots::Ciphers);
   if (!ciphersSlot.isNullOrUndefined()) {
     JS::RootedString ciphersString(cx, ciphersSlot.toString());
-    auto ciphersChars = core::encode(cx, ciphersString);
+    auto ciphersChars = saru::encode(cx, ciphersString);
     backend_config.ciphers.emplace(std::move(ciphersChars));
   }
 
   auto sniHostnameSlot = JS::GetReservedSlot(backend, Backend::Slots::SniHostname);
   if (!sniHostnameSlot.isNullOrUndefined()) {
     JS::RootedString sniHostnameString(cx, sniHostnameSlot.toString());
-    auto sniHostnameChars = core::encode(cx, sniHostnameString);
+    auto sniHostnameChars = saru::encode(cx, sniHostnameString);
     backend_config.sni_hostname.emplace(std::move(sniHostnameChars));
   }
 
@@ -906,7 +906,7 @@ bool Backend::set_target(JSContext *cx, JSObject *backend, JS::HandleValue targe
     return false;
   }
 
-  auto targetStringSlice = core::encode_spec_string(cx, target_val);
+  auto targetStringSlice = saru::encode_spec_string(cx, target_val);
   if (!targetStringSlice.data) {
     return false;
   }
@@ -939,7 +939,7 @@ bool Backend::set_target(JSContext *cx, JSObject *backend, JS::HandleValue targe
 
 JSObject *Backend::create(JSContext *cx, JS::HandleObject request) {
   JS::RootedValue request_url(cx, RequestOrResponse::url(request));
-  auto url_string = core::encode_spec_string(cx, request_url);
+  auto url_string = saru::encode_spec_string(cx, request_url);
   if (!url_string.data) {
     return nullptr;
   }
@@ -1263,7 +1263,7 @@ bool Backend::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
     if (!JS_GetProperty(cx, configuration, "ciphers", &ciphers_val)) {
       return false;
     }
-    auto ciphers_chars = core::encode(cx, ciphers_val);
+    auto ciphers_chars = saru::encode(cx, ciphers_val);
     if (!ciphers_chars) {
       return false;
     }
@@ -1284,7 +1284,7 @@ bool Backend::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
       JS::RootedString ciphers(cx, ciphersSlot.toString());
 
       // TODO: what should this be used for?
-      auto ciphersChars = core::encode(cx, ciphers);
+      auto ciphersChars = saru::encode(cx, ciphers);
     }
   }
 

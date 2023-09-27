@@ -1,8 +1,9 @@
 #include "builtins/client-info.h"
-#include "core/geo_ip.h"
+#include "builtins/geo_ip.h"
 #include "host_interface/host_api.h"
 #include "js/JSON.h"
 #include "openssl/evp.h"
+#include "saru/builtin.h"
 #include <arpa/inet.h>
 
 namespace builtins {
@@ -93,7 +94,7 @@ JSString *retrieve_geo_info(JSContext *cx, JS::HandleObject self) {
       return nullptr;
   }
 
-  JS::RootedString geo(cx, core::get_geo_info(cx, address_str));
+  JS::RootedString geo(cx, builtins::get_geo_info(cx, address_str));
   if (!geo)
     return nullptr;
 

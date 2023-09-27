@@ -1,9 +1,9 @@
-#ifndef BUILTIN_TEXT_ENCODER_H
-#define BUILTIN_TEXT_ENCODER_H
+#ifndef SARU_BUILTINS_TEXT_ENCODER_H
+#define SARU_BUILTINS_TEXT_ENCODER_H
 
-#include "builtin.h"
+#include "saru/builtin.h"
 
-namespace builtins {
+namespace saru {
 
 class TextEncoder final : public BuiltinImpl<TextEncoder> {
   static bool encode(JSContext *cx, unsigned argc, JS::Value *vp);
@@ -25,6 +25,6 @@ public:
   static bool constructor(JSContext *cx, unsigned argc, JS::Value *vp);
 };
 
-} // namespace builtins
+} // namespace saru
 
 #endif

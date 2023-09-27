@@ -7,12 +7,12 @@
 
 #include "zlib.h"
 
-#include "builtin.h"
 #include "builtins/compression-stream.h"
 #include "builtins/transform-stream-default-controller.h"
 #include "builtins/transform-stream.h"
-#include "core/encode.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
+#include "saru/encode.h"
 
 namespace builtins {
 
@@ -292,7 +292,7 @@ bool CompressionStream::constructor(JSContext *cx, unsigned argc, JS::Value *vp)
   // `TypeError`.
   CTOR_HEADER("CompressionStream", 1);
 
-  auto format_chars = core::encode(cx, args[0]);
+  auto format_chars = saru::encode(cx, args[0]);
   if (!format_chars) {
     return false;
   }

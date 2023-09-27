@@ -8,9 +8,13 @@
 #include "jsapi.h"
 #pragma clang diagnostic pop
 
-#include "core/allocator.h"
 #include "fastly_world.h"
 #include "host_interface/fastly.h"
+#include "saru/allocator.h"
+#include "saru/core.h"
+
+using saru::AsyncHandle;
+using saru::HostError;
 
 // Ensure that all the things we want to use the hostcall buffer for actually
 // fit into the buffer.
@@ -822,9 +826,29 @@ bool fastly_compute_at_edge_object_store_insert(
   return convert_result(fastly::object_store_insert(store, key->ptr, key->len, body_handle), err);
 }
 
+bool saru_async_io_select(const AsyncHandle *handles, size_t handle_cnt, uint32_t timeout_ms, uint32_t *maybe_ret, HostError *err) {
+  static_assert(sizeof(AsyncHandle) == sizeof(fastly_compute_at_edge_async_io_handle_t));
+  fastly_world_list_fastly_compute_at_edge_async_io_handle_t hs{
+      .ptr = reinterpret_cast<fastly_compute_at_edge_async_io_handle_t *>(
+          const_cast<AsyncHandle *>(handles)),
+      .len = handle_cnt};
+  fastly_world_option_u32_t ret;
+  fastly_compute_at_edge_types_error_t fastly_err;
+  return !fastly_compute_at_edge_async_io_select(&hs, timeout_ms, &ret, &fastly_err);
+    res.emplace_err(err);
+  } else if (ret.is_some) {
+    res.emplace(ret.val);
+  } else {
+    res.emplace(std::nullopt);
+  }
+
+  return res;
+}
+
 bool fastly_compute_at_edge_async_io_select(
     fastly_world_list_fastly_compute_at_edge_async_io_handle_t *hs, uint32_t timeout_ms,
     fastly_world_option_u32_t *ret, fastly_compute_at_edge_types_error_t *err) {
+
   if (!convert_result(fastly::async_select(hs->ptr, hs->len, timeout_ms, &ret->val), err)) {
     if (*err == FASTLY_COMPUTE_AT_EDGE_TYPES_ERROR_OPTIONAL_NONE) {
       ret->is_some = false;

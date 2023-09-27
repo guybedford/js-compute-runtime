@@ -1,13 +1,14 @@
 #include <algorithm>
 #include <arpa/inet.h>
 
-#include "core/encode.h"
-#include "core/geo_ip.h"
+#include "builtins/geo_ip.h"
+#include "host_interface/host_api.h"
+#include "saru/encode.h"
 
-namespace core {
+namespace builtins {
 
 JSString *get_geo_info(JSContext *cx, JS::HandleString address_str) {
-  auto address = core::encode(cx, address_str);
+  auto address = saru::encode(cx, address_str);
   if (!address) {
     return nullptr;
   }
@@ -42,4 +43,4 @@ JSString *get_geo_info(JSContext *cx, JS::HandleString address_str) {
   return JS_NewStringCopyUTF8N(cx, JS::UTF8Chars(ret.ptr.release(), ret.len));
 }
 
-} // namespace core
+} // namespace builtins

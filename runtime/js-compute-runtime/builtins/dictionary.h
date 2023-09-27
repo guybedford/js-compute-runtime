@@ -1,9 +1,9 @@
 #ifndef JS_COMPUTE_RUNTIME_DICTIONARY_H
 #define JS_COMPUTE_RUNTIME_DICTIONARY_H
 
-#include "builtin.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
 
 namespace builtins {
 

@@ -1,8 +1,10 @@
+#ifndef SARU_BUILTINS_URL_H
+#define SARU_BUILTINS_URL_H
 
-#include "builtin.h"
 #include "rust-url/rust-url.h"
+#include "saru/builtin.h"
 
-namespace builtins {
+namespace saru {
 
 class URLSearchParamsIterator : public BuiltinNoConstructor<URLSearchParamsIterator> {
 public:
@@ -128,4 +130,6 @@ public:
   static bool constructor(JSContext *cx, unsigned argc, JS::Value *vp);
 };
 
-} // namespace builtins
+} // namespace saru
+
+#endif

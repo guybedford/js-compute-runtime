@@ -1,6 +1,6 @@
 #include "secret-store.h"
-#include "core/encode.h"
 #include "host_interface/host_api.h"
+#include "saru/encode.h"
 
 namespace builtins {
 
@@ -80,7 +80,7 @@ bool SecretStore::get(JSContext *cx, unsigned argc, JS::Value *vp) {
     return ReturnPromiseRejectedWithPendingError(cx, args);
   }
 
-  auto key = core::encode(cx, args[0]);
+  auto key = saru::encode(cx, args[0]);
   if (!key) {
     return false;
   }
@@ -152,7 +152,7 @@ bool SecretStore::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
   REQUEST_HANDLER_ONLY("The SecretStore builtin");
   CTOR_HEADER("SecretStore", 1);
 
-  auto name = core::encode(cx, args[0]);
+  auto name = saru::encode(cx, args[0]);
   if (!name) {
     return false;
   }

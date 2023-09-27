@@ -1,5 +1,5 @@
 #include "console.h"
-#include "core/encode.h"
+#include "saru/encode.h"
 #include <chrono>
 #include <map>
 
@@ -11,11 +11,16 @@
 #include <js/experimental/TypedData.h>
 #pragma clang diagnostic pop
 
+#include "saru/runtime_definitions.h"
+
 namespace {
 using FpMilliseconds = std::chrono::duration<float, std::chrono::milliseconds::period>;
 auto count_map = std::map<std::string, size_t>{};
 auto timer_map = std::map<std::string, std::chrono::steady_clock::time_point>{};
 } // namespace
+
+using saru::Console;
+
 JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::HandleValue val,
                                  JS::MutableHandleObjectVector visitedObjects);
 
@@ -220,7 +225,7 @@ JS::Result<mozilla::Ok> ObjectToSource(JSContext *cx, std::string &sourceOut, JS
       MOZ_TRY(ToSource(cx, sourceOut, v, visitedObjects));
     } else {
       JS::RootedValue v(cx, js::IdToValue(id));
-      auto msg = core::encode(cx, v);
+      auto msg = saru::encode(cx, v);
       if (!msg) {
         return JS::Result<mozilla::Ok>(JS::Error());
       }
@@ -252,7 +257,7 @@ mozilla::Maybe<std::string> get_class_name(JSContext *cx, JS::HandleObject obj) 
     JS::RootedValue name(cx);
     JS::RootedObject constructorObj(cx, &constructorVal.toObject());
     if (JS_GetProperty(cx, constructorObj, "name", &name) && name.isString()) {
-      auto msg = core::encode(cx, name);
+      auto msg = saru::encode(cx, name);
       if (!msg) {
         return result;
       }
@@ -289,7 +294,7 @@ JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::Hand
       if (id) {
         sourceOut += " ";
         JS::RootedString name(cx, id);
-        auto msg = core::encode(cx, name);
+        auto msg = saru::encode(cx, name);
         if (!msg) {
           return JS::Result<mozilla::Ok>(JS::Error());
         }
@@ -331,7 +336,7 @@ JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::Hand
     case js::ESClass::Error:
     case js::ESClass::RegExp: {
       JS::RootedString source(cx, JS_ValueToSource(cx, val));
-      auto msg = core::encode(cx, source);
+      auto msg = saru::encode(cx, source);
       if (!msg) {
         return JS::Result<mozilla::Ok>(JS::Error());
       }
@@ -380,7 +385,7 @@ JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::Hand
     }
   }
   case JS::ValueType::String: {
-    auto msg = core::encode(cx, val);
+    auto msg = saru::encode(cx, val);
     if (!msg) {
       return JS::Result<mozilla::Ok>(JS::Error());
     }
@@ -391,7 +396,7 @@ JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::Hand
   }
   default: {
     JS::RootedString source(cx, JS_ValueToSource(cx, val));
-    auto msg = core::encode(cx, source);
+    auto msg = saru::encode(cx, source);
     if (!msg) {
       return JS::Result<mozilla::Ok>(JS::Error());
     }
@@ -401,7 +406,7 @@ JS::Result<mozilla::Ok> ToSource(JSContext *cx, std::string &sourceOut, JS::Hand
   }
 }
 
-namespace builtins {
+namespace saru {
 
 template <Console::LogType log_ty>
 static bool console_out(JSContext *cx, unsigned argc, JS::Value *vp) {
@@ -428,7 +433,7 @@ static bool console_out(JSContext *cx, unsigned argc, JS::Value *vp) {
     }
   }
 
-  builtin_impl_console_log(log_ty, fullLogLine.c_str());
+  saru_impl_console_log(log_ty, fullLogLine.c_str());
 
   args.rval().setUndefined();
   return true;
@@ -480,7 +485,7 @@ static bool assert(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   // 5. Perform Logger("assert", data).
-  builtin_impl_console_log(Console::LogType::Error, message.c_str());
+  saru_impl_console_log(Console::LogType::Error, message.c_str());
   return true;
 }
 
@@ -491,7 +496,7 @@ static bool count(JSContext *cx, unsigned argc, JS::Value *vp) {
   std::string label = "";
   if (args.hasDefined(0)) {
     auto label_val = args.get(0);
-    auto label_string = core::encode(cx, label_val);
+    auto label_string = saru::encode(cx, label_val);
     if (!label_string) {
       return false;
     }
@@ -513,7 +518,7 @@ static bool count(JSContext *cx, unsigned argc, JS::Value *vp) {
   concat += ": ";
   concat += std::to_string(count);
   // 5. Perform Logger("count", « concat »).
-  builtin_impl_console_log(Console::LogType::Log, concat.c_str());
+  saru_impl_console_log(Console::LogType::Log, concat.c_str());
   args.rval().setUndefined();
   return true;
 }
@@ -524,7 +529,7 @@ static bool countReset(JSContext *cx, unsigned argc, JS::Value *vp) {
   std::string label;
   if (args.hasDefined(0)) {
     auto label_val = args.get(0);
-    auto label_string = core::encode(cx, label_val);
+    auto label_string = saru::encode(cx, label_val);
     if (!label_string) {
       return false;
     }
@@ -544,7 +549,7 @@ static bool countReset(JSContext *cx, unsigned argc, JS::Value *vp) {
     std::string message = "Count for '";
     message += label;
     message += "' does not exist";
-    builtin_impl_console_log(Console::LogType::Warn, message.c_str());
+    saru_impl_console_log(Console::LogType::Warn, message.c_str());
   }
 
   args.rval().setUndefined();
@@ -562,7 +567,7 @@ static bool time(JSContext *cx, unsigned argc, JS::Value *vp) {
   std::string label;
   if (args.hasDefined(0)) {
     auto label_val = args.get(0);
-    auto label_string = core::encode(cx, label_val);
+    auto label_string = saru::encode(cx, label_val);
     if (!label_string) {
       return false;
     }
@@ -588,7 +593,7 @@ static bool timeLog(JSContext *cx, unsigned argc, JS::Value *vp) {
   std::string label;
   if (args.hasDefined(0)) {
     auto label_val = args.get(0);
-    auto label_string = core::encode(cx, label_val);
+    auto label_string = saru::encode(cx, label_val);
     if (!label_string) {
       return false;
     }
@@ -600,7 +605,7 @@ static bool timeLog(JSContext *cx, unsigned argc, JS::Value *vp) {
     std::string message = "No such label '";
     message += label;
     message += "' for console.timeLog()";
-    builtin_impl_console_log(Console::LogType::Warn, message.c_str());
+    saru_impl_console_log(Console::LogType::Warn, message.c_str());
     args.rval().setUndefined();
     return true;
   }
@@ -648,7 +653,7 @@ static bool timeLog(JSContext *cx, unsigned argc, JS::Value *vp) {
   concat += data;
 
   // 6. Perform Printer("timeLog", « concat »).
-  builtin_impl_console_log(Console::LogType::Log, concat.c_str());
+  saru_impl_console_log(Console::LogType::Log, concat.c_str());
 
   args.rval().setUndefined();
   return true;
@@ -660,7 +665,7 @@ static bool timeEnd(JSContext *cx, unsigned argc, JS::Value *vp) {
   std::string label;
   if (args.hasDefined(0)) {
     auto label_val = args.get(0);
-    auto label_string = core::encode(cx, label_val);
+    auto label_string = saru::encode(cx, label_val);
     if (!label_string) {
       return false;
     }
@@ -672,7 +677,7 @@ static bool timeEnd(JSContext *cx, unsigned argc, JS::Value *vp) {
     std::string message = "No such label '";
     message += label;
     message += "' for console.timeEnd()";
-    builtin_impl_console_log(Console::LogType::Warn, message.c_str());
+    saru_impl_console_log(Console::LogType::Warn, message.c_str());
     args.rval().setUndefined();
     return true;
   }
@@ -692,7 +697,7 @@ static bool timeEnd(JSContext *cx, unsigned argc, JS::Value *vp) {
   concat += "ms";
 
   // 6. Perform Printer("timeEnd", « concat »).
-  builtin_impl_console_log(Console::LogType::Info, concat.c_str());
+  saru_impl_console_log(Console::LogType::Info, concat.c_str());
 
   args.rval().setUndefined();
   return true;
@@ -719,7 +724,7 @@ static bool dir(JSContext *cx, unsigned argc, JS::Value *vp) {
     fullLogLine += source;
   }
 
-  builtin_impl_console_log(Console::LogType::Log, fullLogLine.c_str());
+  saru_impl_console_log(Console::LogType::Log, fullLogLine.c_str());
 
   args.rval().setUndefined();
   return true;
@@ -739,7 +744,7 @@ static bool trace(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (!BuildStackString(cx, principals, stack, &str)) {
     return false;
   }
-  auto stack_string = core::encode(cx, str);
+  auto stack_string = saru::encode(cx, str);
   if (!stack_string) {
     return false;
   }
@@ -770,7 +775,7 @@ static bool trace(JSContext *cx, unsigned argc, JS::Value *vp) {
   fullLogLine += stack_string.begin();
 
   // 3. Perform Printer("trace", « trace »).
-  builtin_impl_console_log(Console::LogType::Log, fullLogLine.c_str());
+  saru_impl_console_log(Console::LogType::Log, fullLogLine.c_str());
   args.rval().setUndefined();
   return true;
 }
@@ -802,7 +807,7 @@ const JSPropertySpec Console::properties[] = {
 
 bool Console::create(JSContext *cx, JS::HandleObject global) {
   JS::RootedObject proto(cx, JS_NewPlainObject(cx));
-  JS::RootedObject console(cx, JS_NewObjectWithGivenProto(cx, &builtins::Console::class_, proto));
+  JS::RootedObject console(cx, JS_NewObjectWithGivenProto(cx, &Console::class_, proto));
   if (!console) {
     return false;
   }
@@ -814,4 +819,4 @@ bool Console::create(JSContext *cx, JS::HandleObject global) {
   }
   return JS_DefineFunctions(cx, console, methods);
 }
-} // namespace builtins
+} // namespace saru

@@ -5,6 +5,6 @@
 int main() { return 0; }
 
 bool exports_fastly_compute_at_edge_reactor_serve(fastly_compute_at_edge_reactor_request_t *req) {
-  host_api::Request request{host_api::HttpReq{req->f0}, host_api::HttpBody{req->f1}};
+  host_api::Request request{host_api::HttpReq{req->f0}, saru::HttpBody{req->f1}};
   return reactor_main(request);
 }

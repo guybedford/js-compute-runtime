@@ -1,9 +1,9 @@
 #ifndef JS_COMPUTE_RUNTIME_CACHE_SIMPLE_H
 #define JS_COMPUTE_RUNTIME_CACHE_SIMPLE_H
 
-#include "builtin.h"
 #include "js-compute-builtins.h"
 #include "request-response.h"
+#include "saru/builtin.h"
 
 namespace builtins {
 
@@ -26,7 +26,7 @@ public:
 
   static bool init_class(JSContext *cx, JS::HandleObject global);
   static bool constructor(JSContext *cx, unsigned argc, JS::Value *vp);
-  static JSObject *create(JSContext *cx, host_api::HttpBody body_handle);
+  static JSObject *create(JSContext *cx, HttpBody body_handle);
 };
 
 class SimpleCache : public BuiltinImpl<SimpleCache> {

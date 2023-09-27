@@ -2,9 +2,9 @@
 #include "builtins/client-info.h"
 #include "builtins/fastly.h"
 #include "builtins/request-response.h"
-#include "builtins/shared/url.h"
 #include "builtins/worker-location.h"
 #include "host_interface/host_api.h"
+#include "saru/builtins/url.h"
 
 using namespace std::literals::string_view_literals;
 
@@ -76,11 +76,11 @@ JSObject *FetchEvent::prepare_downstream_request(JSContext *cx) {
       cx, JS_NewObjectWithGivenProto(cx, &Request::class_, Request::proto_obj));
   if (!requestInstance)
     return nullptr;
-  return Request::create(cx, requestInstance, host_api::HttpReq{}, host_api::HttpBody{}, true);
+  return Request::create(cx, requestInstance, host_api::HttpReq{}, HttpBody{}, true);
 }
 
 bool FetchEvent::init_downstream_request(JSContext *cx, JS::HandleObject request,
-                                         host_api::HttpReq req, host_api::HttpBody body) {
+                                         host_api::HttpReq req, HttpBody body) {
   MOZ_ASSERT(!Request::request_handle(request).is_valid());
 
   JS::SetReservedSlot(request, static_cast<uint32_t>(Request::Slots::Request),
@@ -132,13 +132,13 @@ bool FetchEvent::init_downstream_request(JSContext *cx, JS::HandleObject request
 
   // Set the URL for `globalThis.location` to the client request's URL.
   JS::RootedObject url_instance(
-      cx, JS_NewObjectWithGivenProto(cx, &builtins::URL::class_, builtins::URL::proto_obj));
+      cx, JS_NewObjectWithGivenProto(cx, &saru::URL::class_, saru::URL::proto_obj));
   if (!url_instance) {
     return false;
   }
 
   jsurl::SpecString spec(reinterpret_cast<uint8_t *>(uri_str.ptr.get()), uri_str.len, uri_str.len);
-  builtins::WorkerLocation::url = builtins::URL::create(cx, url_instance, spec);
+  builtins::WorkerLocation::url = saru::URL::create(cx, url_instance, spec);
   if (!builtins::WorkerLocation::url) {
     return false;
   }
@@ -148,12 +148,12 @@ bool FetchEvent::init_downstream_request(JSContext *cx, JS::HandleObject request
   // value explicitly.
   if (!builtins::Fastly::baseURL.get()) {
     JS::RootedObject url_instance(
-        cx, JS_NewObjectWithGivenProto(cx, &builtins::URL::class_, builtins::URL::proto_obj));
+        cx, JS_NewObjectWithGivenProto(cx, &saru::URL::class_, saru::URL::proto_obj));
     if (!url_instance)
       return false;
 
-    builtins::Fastly::baseURL = builtins::URL::create(
-        cx, url_instance, builtins::URL::origin(cx, builtins::WorkerLocation::url));
+    builtins::Fastly::baseURL =
+        saru::URL::create(cx, url_instance, saru::URL::origin(cx, builtins::WorkerLocation::url));
     if (!builtins::Fastly::baseURL)
       return false;
   }
@@ -313,7 +313,7 @@ bool FetchEvent::respondWithError(JSContext *cx, JS::HandleObject self) {
     return false;
   }
 
-  auto make_res = host_api::HttpBody::make();
+  auto make_res = HttpBody::make();
   if (auto *err = make_res.to_err()) {
     HANDLE_ERROR(cx, *err);
     return false;
@@ -422,7 +422,7 @@ JSObject *FetchEvent::create(JSContext *cx) {
 JS::HandleObject FetchEvent::instance() { return INSTANCE; }
 
 bool FetchEvent::init_request(JSContext *cx, JS::HandleObject self, host_api::HttpReq req,
-                              host_api::HttpBody body) {
+                              HttpBody body) {
   JS::RootedObject request(
       cx, &JS::GetReservedSlot(self, static_cast<uint32_t>(Slots::Request)).toObject());
   return init_downstream_request(cx, request, req, body);

@@ -14,13 +14,13 @@
 #include "js/ArrayBuffer.h"
 #include "js/Stream.h"
 
-#include "builtin.h"
 #include "builtins/kv-store.h"
 #include "builtins/native-stream-source.h"
-#include "builtins/shared/url.h"
-#include "core/encode.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/builtin.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
 
 namespace builtins {
 
@@ -95,7 +95,7 @@ bool KVStoreEntry::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
   return false;
 }
 
-JSObject *KVStoreEntry::create(JSContext *cx, host_api::HttpBody body_handle) {
+JSObject *KVStoreEntry::create(JSContext *cx, HttpBody body_handle) {
   JS::RootedObject kvStoreEntry(cx, JS_NewObjectWithGivenProto(cx, &class_, proto_obj));
   if (!kvStoreEntry)
     return nullptr;
@@ -193,7 +193,7 @@ bool KVStore::get(JSContext *cx, unsigned argc, JS::Value *vp) {
   JS::RootedValue key(cx, args.get(0));
 
   // Convert the key argument into a String following https://tc39.es/ecma262/#sec-tostring
-  auto key_chars = core::encode(cx, key);
+  auto key_chars = saru::encode(cx, key);
   if (!key_chars) {
     return false;
   }
@@ -239,7 +239,7 @@ bool KVStore::put(JSContext *cx, unsigned argc, JS::Value *vp) {
   JS::RootedValue key(cx, args.get(0));
 
   // Convert the key argument into a String following https://tc39.es/ecma262/#sec-tostring
-  auto key_chars = core::encode(cx, key);
+  auto key_chars = saru::encode(cx, key);
   if (!key_chars) {
     return false;
   }
@@ -313,14 +313,14 @@ bool KVStore::put(JSContext *cx, unsigned argc, JS::Value *vp) {
     } else if (body_obj && JS::IsArrayBufferObject(body_obj)) {
       bool is_shared;
       JS::GetArrayBufferLengthAndData(body_obj, &length, &is_shared, (uint8_t **)&buf);
-    } else if (body_obj && builtins::URLSearchParams::is_instance(body_obj)) {
-      jsurl::SpecSlice slice = builtins::URLSearchParams::serialize(cx, body_obj);
+    } else if (body_obj && saru::URLSearchParams::is_instance(body_obj)) {
+      jsurl::SpecSlice slice = saru::URLSearchParams::serialize(cx, body_obj);
       buf = (char *)slice.data;
       length = slice.len;
     } else {
       // Convert into a String following https://tc39.es/ecma262/#sec-tostring
       {
-        auto str = core::encode(cx, body_val);
+        auto str = saru::encode(cx, body_val);
         text = std::move(str.ptr);
         length = str.len;
       }
@@ -335,7 +335,7 @@ bool KVStore::put(JSContext *cx, unsigned argc, JS::Value *vp) {
       buf = text.get();
     }
 
-    auto make_res = host_api::HttpBody::make();
+    auto make_res = HttpBody::make();
     if (auto *err = make_res.to_err()) {
       HANDLE_ERROR(cx, *err);
       return ReturnPromiseRejectedWithPendingError(cx, args);
@@ -403,7 +403,7 @@ bool KVStore::constructor(JSContext *cx, unsigned argc, JS::Value *vp) {
   JS::HandleValue name_arg = args.get(0);
 
   // Convert into a String following https://tc39.es/ecma262/#sec-tostring
-  auto name = core::encode(cx, name_arg);
+  auto name = saru::encode(cx, name_arg);
   if (!name) {
     return false;
   }

@@ -21,17 +21,17 @@
 #pragma clang diagnostic pop
 
 #include "builtins/fetch-event.h"
-#include "core/allocator.h"
-#include "core/encode.h"
-#include "core/event_loop.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/allocator.h"
+#include "saru/encode.h"
+#include "saru/event_loop.h"
 #include "third_party/wizer.h"
 #ifdef MEM_STATS
 #include "memory-reporting.h"
 #endif
 
-#include "builtins/shared/performance.h"
+#include "saru/builtins/performance.h"
 
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
@@ -159,7 +159,7 @@ bool init_js() {
     return false;
   }
 
-  builtins::Performance::timeOrigin.emplace(std::chrono::high_resolution_clock::now());
+  saru::Performance::timeOrigin.emplace(std::chrono::high_resolution_clock::now());
 
   return true;
 }
@@ -342,7 +342,7 @@ static bool addEventListener(JSContext *cx, unsigned argc, Value *vp) {
     return false;
   }
 
-  auto event_chars = core::encode(cx, args[0]);
+  auto event_chars = saru::encode(cx, args[0]);
   if (!event_chars) {
     return false;
   }
@@ -471,7 +471,7 @@ static void process_pending_jobs(JSContext *cx, double *total_compute) {
 }
 
 static void wait_for_backends(JSContext *cx, double *total_compute) {
-  if (!core::EventLoop::has_pending_async_tasks())
+  if (!saru::EventLoop::has_pending_async_tasks())
     return;
 
   auto pre_requests = system_clock::now();
@@ -480,7 +480,7 @@ static void wait_for_backends(JSContext *cx, double *total_compute) {
     fflush(stdout);
   }
 
-  if (!core::EventLoop::process_pending_async_tasks(cx))
+  if (!saru::EventLoop::process_pending_async_tasks(cx))
     abort(cx, "processing network requests");
 
   double diff = duration_cast<microseconds>(system_clock::now() - pre_requests).count();
@@ -491,7 +491,7 @@ static void wait_for_backends(JSContext *cx, double *total_compute) {
 bool reactor_main(host_api::Request req) {
   assert(hasWizeningFinished());
 
-  builtins::Performance::timeOrigin.emplace(std::chrono::high_resolution_clock::now());
+  saru::Performance::timeOrigin.emplace(std::chrono::high_resolution_clock::now());
 
   double total_compute = 0;
   auto start = system_clock::now();
@@ -530,9 +530,9 @@ bool reactor_main(host_api::Request req) {
 
     // Process async tasks.
     wait_for_backends(cx, &total_compute);
-  } while (js::HasJobsPending(cx) || core::EventLoop::has_pending_async_tasks());
+  } while (js::HasJobsPending(cx) || saru::EventLoop::has_pending_async_tasks());
 
-  if (debug_logging_enabled() && core::EventLoop::has_pending_async_tasks()) {
+  if (debug_logging_enabled() && saru::EventLoop::has_pending_async_tasks()) {
     fprintf(stderr, "Service terminated with async tasks pending. "
                     "Use FetchEvent#waitUntil to extend the service's lifetime "
                     "if needed.\n");

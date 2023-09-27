@@ -8,9 +8,9 @@
 #include "js/Conversions.h"
 
 #include "cache-override.h"
-#include "core/encode.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
+#include "saru/encode.h"
 
 namespace builtins {
 
@@ -149,7 +149,7 @@ bool CacheOverride::mode_set(JSContext *cx, JS::HandleObject self, JS::HandleVal
     return false;
   }
 
-  auto mode_chars = core::encode(cx, val);
+  auto mode_chars = saru::encode(cx, val);
   if (!mode_chars) {
     return false;
   }

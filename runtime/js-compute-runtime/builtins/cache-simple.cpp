@@ -1,14 +1,14 @@
 #include "cache-simple.h"
-#include "builtin.h"
 #include "builtins/native-stream-source.h"
-#include "builtins/shared/url.h"
-#include "core/encode.h"
 #include "host_interface/host_api.h"
 #include "js-compute-builtins.h"
 #include "js/ArrayBuffer.h"
 #include "js/Result.h"
 #include "js/Stream.h"
 #include "openssl/evp.h"
+#include "saru/builtin.h"
+#include "saru/builtins/url.h"
+#include "saru/encode.h"
 #include <tuple>
 
 namespace builtins {
@@ -64,7 +64,7 @@ bool SimpleCacheEntry::constructor(JSContext *cx, unsigned argc, JS::Value *vp) 
   return false;
 }
 
-JSObject *SimpleCacheEntry::create(JSContext *cx, host_api::HttpBody body_handle) {
+JSObject *SimpleCacheEntry::create(JSContext *cx, HttpBody body_handle) {
   JS::RootedObject SimpleCacheEntry(cx, JS_NewObjectWithGivenProto(cx, &class_, proto_obj));
   if (!SimpleCacheEntry)
     return nullptr;
@@ -118,13 +118,13 @@ JS::Result<std::tuple<JS::UniqueChars, size_t>> convertBodyInit(JSContext *cx,
     JS::GetArrayBufferLengthAndData(bodyObj, &length, &is_shared, &bytes);
     MOZ_ASSERT(!is_shared);
     buf.reset(reinterpret_cast<char *>(bytes));
-  } else if (bodyObj && builtins::URLSearchParams::is_instance(bodyObj)) {
-    jsurl::SpecSlice slice = builtins::URLSearchParams::serialize(cx, bodyObj);
+  } else if (bodyObj && saru::URLSearchParams::is_instance(bodyObj)) {
+    jsurl::SpecSlice slice = saru::URLSearchParams::serialize(cx, bodyObj);
     buf = JS::UniqueChars(reinterpret_cast<char *>(const_cast<uint8_t *>(slice.data)));
     length = slice.len;
   } else {
     // Convert into a String following https://tc39.es/ecma262/#sec-tostring
-    auto str = core::encode(cx, bodyInit);
+    auto str = saru::encode(cx, bodyInit);
     if (!str) {
       return JS::Result<std::tuple<JS::UniqueChars, size_t>>(JS::Error());
     }
@@ -316,7 +316,7 @@ bool SimpleCache::getOrSetThenHandler(JSContext *cx, JS::HandleObject owner, JS:
     return false;
   }
 
-  host_api::HttpBody source_body;
+  HttpBody source_body;
   JS::UniqueChars buf;
   JS::RootedObject body_obj(cx, body_val.isObject() ? &body_val.toObject() : nullptr);
   // If the body is a Host-backed ReadableStream we optimise our implementation
@@ -380,7 +380,7 @@ bool SimpleCache::getOrSetThenHandler(JSContext *cx, JS::HandleObject owner, JS:
   // We create a surrogate-key from the cache-key, as this allows the cached contents to be purgable
   // from within the JavaScript application
   // This is because the cache API currently only supports purging via surrogate-key
-  auto key_chars = core::encode(cx, keyVal);
+  auto key_chars = saru::encode(cx, keyVal);
   if (!key_chars) {
     return false;
   }
@@ -445,7 +445,7 @@ bool SimpleCache::getOrSet(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   // Convert key parameter into a string and check the value adheres to our validation rules.
-  auto key_chars = core::encode(cx, args.get(0));
+  auto key_chars = saru::encode(cx, args.get(0));
   if (!key_chars) {
     return false;
   }
@@ -560,7 +560,7 @@ bool SimpleCache::set(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   // Convert key parameter into a string and check the value adheres to our validation rules.
-  auto key = core::encode(cx, args.get(0));
+  auto key = saru::encode(cx, args.get(0));
   if (!key) {
     return false;
   }
@@ -593,7 +593,7 @@ bool SimpleCache::set(JSContext *cx, unsigned argc, JS::Value *vp) {
                        1'000'000'000; // turn second representation into nanosecond representation
 
   JS::HandleValue body_val = args.get(1);
-  host_api::HttpBody source_body;
+  HttpBody source_body;
   JS::UniqueChars buf;
   JS::RootedObject body_obj(cx, body_val.isObject() ? &body_val.toObject() : nullptr);
   // If the body parameter is a Host-backed ReadableStream we optimise our implementation
@@ -700,7 +700,7 @@ bool SimpleCache::get(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   // Convert key parameter into a string and check the value adheres to our validation rules.
-  auto key = core::encode(cx, args[0]);
+  auto key = saru::encode(cx, args[0]);
   if (!key) {
     return false;
   }
@@ -751,7 +751,7 @@ bool SimpleCache::purge(JSContext *cx, unsigned argc, JS::Value *vp) {
   }
 
   // Convert key parameter into a string and check the value adheres to our validation rules.
-  auto key_chars = core::encode(cx, args.get(0));
+  auto key_chars = saru::encode(cx, args.get(0));
   if (!key_chars) {
     return false;
   }
@@ -777,7 +777,7 @@ bool SimpleCache::purge(JSContext *cx, unsigned argc, JS::Value *vp) {
   if (!JS_GetProperty(cx, options, "scope", &scope_val)) {
     return false;
   }
-  auto scope_chars = core::encode(cx, scope_val);
+  auto scope_chars = saru::encode(cx, scope_val);
   if (!scope_chars) {
     return false;
   }
