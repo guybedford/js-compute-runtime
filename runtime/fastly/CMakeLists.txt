@@ -7,5 +7,8 @@ add_builtin(fastly::fastly SRC builtins/fastly.cpp)
 add_builtin(fastly::backend SRC builtins/backend.cpp)
 add_builtin(fastly::fetch SRC builtins/fetch/fetch.cpp builtins/fetch/request-response.cpp builtins/fetch/headers.cpp)
 add_builtin(fastly::fetch_event SRC builtins/fetch-event.cpp)
+# add_builtin(fastly::cache_simple SRC builtins/cache-simple.cpp)
+
+# set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES "openssl/include")
 
 project(FastlyJS)
